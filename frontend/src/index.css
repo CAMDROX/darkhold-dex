@@ -1,0 +1,140 @@
+@import "tailwindcss";
+
+@theme {
+  --font-cinzel: 'Cinzel', serif;
+  --font-sans: 'Outfit', sans-serif;
+  --font-mono: 'JetBrains Mono', monospace;
+
+  --color-darkhold-bg: #080706;
+  --color-darkhold-surface: #120F0D;
+  --color-darkhold-card: #181412;
+  --color-darkhold-gold: #D4AF37;
+  --color-darkhold-gold-bright: #F5D061;
+  --color-darkhold-gold-muted: #8E783A;
+  --color-darkhold-crimson: #EF4444;
+  --color-darkhold-crimson-dark: #991B1B;
+  --color-darkhold-emerald: #22C55E;
+}
+
+:root {
+  color-scheme: dark;
+}
+
+body {
+  margin: 0;
+  background-color: #080706;
+  color: #E5E0D8;
+  font-family: 'Outfit', sans-serif;
+  overflow-x: hidden;
+}
+
+/* Custom scrollbar */
+::-webkit-scrollbar {
+  width: 7px;
+}
+::-webkit-scrollbar-track {
+  background: #080706;
+}
+::-webkit-scrollbar-thumb {
+  background: #231C18;
+  border-radius: 4px;
+  border: 1px solid rgba(212, 175, 55, 0.15);
+}
+::-webkit-scrollbar-thumb:hover {
+  background: #D4AF37;
+}
+
+/* Glossy Finish Card Styles from Lovable Dashboard reference */
+.gloss-panel {
+  background: linear-gradient(145deg, rgba(24, 20, 18, 0.72) 0%, rgba(13, 11, 10, 0.88) 100%);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  border: 1px solid rgba(212, 175, 55, 0.18);
+  box-shadow: 0 12px 35px -5px rgba(0, 0, 0, 0.75), inset 0 1px 0 rgba(255, 255, 255, 0.07);
+}
+
+.gloss-panel:hover {
+  border-color: rgba(212, 175, 55, 0.35);
+  box-shadow: 0 16px 40px -5px rgba(0, 0, 0, 0.85), 0 0 25px rgba(212, 175, 55, 0.1), inset 0 1px 0 rgba(255, 255, 255, 0.12);
+}
+
+.gloss-panel-crimson {
+  background: linear-gradient(145deg, rgba(32, 12, 12, 0.6) 0%, rgba(14, 8, 8, 0.85) 100%);
+  backdrop-filter: blur(16px);
+  border: 1px solid rgba(239, 68, 68, 0.25);
+  box-shadow: 0 12px 35px -5px rgba(0, 0, 0, 0.8), inset 0 1px 0 rgba(255, 100, 100, 0.08);
+}
+
+.gloss-pill {
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.06) 0%, rgba(255, 255, 255, 0.01) 100%), rgba(20, 16, 14, 0.85);
+  backdrop-filter: blur(12px);
+  border: 1px solid rgba(212, 175, 55, 0.28);
+  box-shadow: 0 4px 15px rgba(0, 0, 0, 0.4), inset 0 1px 0 rgba(255, 255, 255, 0.1);
+}
+
+/* Arcane Grid / Runes pattern background */
+.arcane-grid-bg {
+  background-image: 
+    linear-gradient(to right, rgba(212, 175, 55, 0.04) 1px, transparent 1px),
+    linear-gradient(to bottom, rgba(212, 175, 55, 0.04) 1px, transparent 1px);
+  background-size: 40px 40px;
+}
+
+.arcane-radial-glow {
+  background: radial-gradient(circle at 50% 20%, rgba(212, 175, 55, 0.14) 0%, rgba(239, 68, 68, 0.08) 35%, transparent 70%);
+}
+
+/* Animations */
+@keyframes rotate-slow {
+  from {
+    transform: rotate(0deg);
+  }
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+@keyframes rotate-reverse-slow {
+  from {
+    transform: rotate(360deg);
+  }
+  to {
+    transform: rotate(0deg);
+  }
+}
+
+@keyframes pulse-glow {
+  0%, 100% {
+    opacity: 0.35;
+    filter: drop-shadow(0 0 12px rgba(239, 68, 68, 0.3));
+  }
+  50% {
+    opacity: 0.7;
+    filter: drop-shadow(0 0 24px rgba(212, 175, 55, 0.5));
+  }
+}
+
+@keyframes float-subtle {
+  0%, 100% {
+    transform: translateY(0px);
+  }
+  50% {
+    transform: translateY(-6px);
+  }
+}
+
+.animate-rotate-slow {
+  animation: rotate-slow 60s linear infinite;
+}
+
+.animate-rotate-reverse-slow {
+  animation: rotate-reverse-slow 80s linear infinite;
+}
+
+.animate-pulse-glow {
+  animation: pulse-glow 5s ease-in-out infinite;
+}
+
+.animate-float-subtle {
+  animation: float-subtle 4s ease-in-out infinite;
+}
