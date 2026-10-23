@@ -1,6 +1,7 @@
 import React from 'react'
 import { BrowserRouter, Routes, Route, Navigate, useLocation } from 'react-router-dom'
 import { AuthProvider, useAuth } from './context/AuthContext'
+import { WebSocketProvider } from './context/WebSocketContext'
 import { Toaster } from 'react-hot-toast'
 import Navbar from './components/Navbar'
 import AppNavbar from './components/AppNavbar'
@@ -127,7 +128,9 @@ export default function App() {
   return (
     <BrowserRouter>
       <AuthProvider>
-        <AppContent />
+        <WebSocketProvider>
+          <AppContent />
+        </WebSocketProvider>
       </AuthProvider>
     </BrowserRouter>
   )

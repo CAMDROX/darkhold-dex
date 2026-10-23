@@ -15,6 +15,7 @@ import (
 	"darkhold-dex/backend/pkg/email"
 	"darkhold-dex/backend/pkg/middleware"
 	"darkhold-dex/backend/pkg/models"
+	"darkhold-dex/backend/pkg/ws"
 
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5"
@@ -632,10 +633,18 @@ func SubmitKYC(w http.ResponseWriter, r *http.Request) {
 	)
 
 	kyc := fetchUserKYC(r.Context(), user.ID)
+	userResp := user.ToResponse(kyc)
+
+	// Broadcast real-time KYC_SUBMITTED event to all connected compliance admins
+	if ws.GlobalHub != nil {
+		ws.GlobalHub.BroadcastToRoom(ws.TopicAdminCompliance, ws.EventKYCSubmitted, map[string]interface{}{
+			"user": userResp,
+		})
+	}
 
 	writeJSONSuccess(w, http.StatusOK, map[string]interface{}{
 		"message": "Government ID proof submitted successfully! Your account verification is now pending admin review.",
-		"user":    user.ToResponse(kyc),
+		"user":    userResp,
 	})
 }
 
@@ -845,12 +854,29 @@ func AdminReviewKYC(w http.ResponseWriter, r *http.Request) {
 		}(targetEmail, targetUsername, newUserKYCStatus, reason)
 	}
 
+	now := time.Now().UTC()
+	reviewPayload := map[string]interface{}{
+		"user_id":          targetUserID,
+		"kyc_status":       newUserKYCStatus,
+		"reviewed_by":      adminClaims.UserID,
+		"reviewed_at":      now,
+		"rejection_reason": reason,
+	}
+
+	// Broadcast real-time KYC_STATUS_UPDATED event to:
+	// 1. The specific user across all their devices/tabs (instantly unlocks/updates their UI)
+	// 2. All connected admins in admin:compliance (so other admins see the status change immediately)
+	if ws.GlobalHub != nil {
+		ws.GlobalHub.BroadcastToUser(targetUserID, ws.EventKYCStatusUpdated, reviewPayload)
+		ws.GlobalHub.BroadcastToRoom(ws.TopicAdminCompliance, ws.EventKYCStatusUpdated, reviewPayload)
+	}
+
 	writeJSONSuccess(w, http.StatusOK, map[string]interface{}{
-		"message":        fmt.Sprintf("User KYC status updated to '%s' and email notification dispatched", newUserKYCStatus),
-		"user_id":        targetUserID,
-		"kyc_status":     newUserKYCStatus,
-		"reviewed_by":    adminClaims.UserID,
-		"reviewed_at":    time.Now(),
+		"message":          fmt.Sprintf("User KYC status updated to '%s' and email notification dispatched", newUserKYCStatus),
+		"user_id":          targetUserID,
+		"kyc_status":       newUserKYCStatus,
+		"reviewed_by":      adminClaims.UserID,
+		"reviewed_at":      now,
 		"rejection_reason": reason,
 	})
 }

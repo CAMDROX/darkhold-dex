@@ -18,11 +18,13 @@ import {
 } from 'lucide-react'
 import { Link, Navigate } from 'react-router-dom'
 import { useAuth } from '../context/AuthContext'
+import { useWebSocket } from '../context/WebSocketContext'
 import { authApi } from '../services/api'
 import toast from 'react-hot-toast'
 
 export default function AdminVerificationsPage() {
   const { user } = useAuth()
+  const { subscribe, isConnected } = useWebSocket()
   const [verifications, setVerifications] = useState([])
   const [isLoading, setIsLoading] = useState(true)
   const [filter, setFilter] = useState('pending') // 'all', 'pending', 'verified', 'unverified'
@@ -53,6 +55,55 @@ export default function AdminVerificationsPage() {
   useEffect(() => {
     fetchVerifications()
   }, [filter])
+
+  // Real-time WebSocket subscriber for zero-reload verification queue updates
+  useEffect(() => {
+    // 1. Listen for incoming KYC submissions from users
+    const unsubSubmitted = subscribe('KYC_SUBMITTED', (data) => {
+      if (!data || !data.user) return
+      toast.success(`🔔 New KYC Submitted: @${data.user.username}`, {
+        icon: '🛡️',
+        duration: 6000,
+      })
+      setVerifications((prev) => [
+        data,
+        ...prev.filter((item) => item.user.id !== data.user.id),
+      ])
+    })
+
+    // 2. Listen for status updates across admins
+    const unsubUpdated = subscribe('KYC_STATUS_UPDATED', (data) => {
+      if (!data || !data.user_id) return
+      setVerifications((prev) =>
+        prev.map((item) => {
+          if (item.user.id === data.user_id) {
+            return {
+              ...item,
+              user: {
+                ...item.user,
+                kyc_status: data.kyc_status,
+                kyc: item.user.kyc
+                  ? {
+                      ...item.user.kyc,
+                      status: data.kyc_status === 'verified' ? 'approved' : 'rejected',
+                      rejection_reason: data.rejection_reason,
+                      reviewed_at: data.reviewed_at,
+                      reviewed_by: data.reviewed_by,
+                    }
+                  : null,
+              },
+            }
+          }
+          return item
+        })
+      )
+    })
+
+    return () => {
+      unsubSubmitted()
+      unsubUpdated()
+    }
+  }, [subscribe])
 
   const handleApprove = async (userId, username) => {
     setIsProcessing(true)
@@ -134,14 +185,23 @@ export default function AdminVerificationsPage() {
           </p>
         </div>
 
-        <button
-          onClick={fetchVerifications}
-          disabled={isLoading}
-          className="self-start md:self-auto px-4 py-2 rounded-xl text-xs font-mono bg-[#14100E] border border-[#D4AF37]/30 hover:border-[#D4AF37] text-[#D1C9BE] transition-all flex items-center gap-2 cursor-pointer disabled:opacity-50"
-        >
-          <RefreshCw className={`w-3.5 h-3.5 ${isLoading ? 'animate-spin text-[#D4AF37]' : ''}`} />
-          <span>Refresh Queue</span>
-        </button>
+        <div className="flex items-center gap-2.5 self-start md:self-auto">
+          <div className="flex items-center gap-2 px-3 py-2 rounded-xl bg-[#120E0C] border border-[#2A211B] text-xs font-mono">
+            <span className={`w-2 h-2 rounded-full ${isConnected ? 'bg-[#22C55E] animate-pulse' : 'bg-[#EF4444]'}`} />
+            <span className={isConnected ? 'text-[#86EFAC] font-bold' : 'text-[#EF4444]'}>
+              {isConnected ? 'LIVE WS STREAM' : 'WS OFFLINE'}
+            </span>
+          </div>
+
+          <button
+            onClick={fetchVerifications}
+            disabled={isLoading}
+            className="px-4 py-2 rounded-xl text-xs font-mono bg-[#14100E] border border-[#D4AF37]/30 hover:border-[#D4AF37] text-[#D1C9BE] transition-all flex items-center gap-2 cursor-pointer disabled:opacity-50"
+          >
+            <RefreshCw className={`w-3.5 h-3.5 ${isLoading ? 'animate-spin text-[#D4AF37]' : ''}`} />
+            <span>Refresh Queue</span>
+          </button>
+        </div>
       </div>
 
       {/* Filter Tabs & Search Bar */}
