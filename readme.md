@@ -13,12 +13,19 @@
   - High-gloss finish with backdrop blur glassmorphism, glowing edge borders, and rotating sacred geometry rings.
   - Interactive live simulation sandbox directly on the landing page (Anti-Scalper Price Collar Sandbox, Dutch Auction Liquidator, In-Memory FIFO Queue).
   - Level 2 Depth Ladder and Market Activity feed matching the Darkhold Exchange dashboard specs.
-- **Backend Matching Engine**: [Go](https://golang.org/) (`backend/cmd/server/main.go`)
+  - Complete Authentication UI (`/login`, `/signup`, `/verify-email`, `/dashboard`, `/profile`) with responsive profile dropdown & toast feedback.
+- **Backend Matching Engine & Auth API**: [Go](https://golang.org/) (`backend/cmd/server/main.go`)
   - In-memory deterministic FIFO price-time priority matching.
   - Sub-10ms latency SLA (<4.2ms benchmarked).
   - Lock-free Goroutine concurrency for 1,000+ orders/sec throughput.
   - Pre-matching Dynamic Price Collar validation gate (drops scalper orders with HTTP 422).
+  - **Access/Refresh JWT Multi-Session Authentication**:
+    - Short-lived Access Token (15 mins) + SHA-256 hashed Refresh Token in `public.sessions`.
+    - Device, Browser, OS, and IP address fingerprinting.
+    - Multi-device revocation: Logout current, revoke specific device, or revoke all devices simultaneously.
+  - **Email OTP Verification**: Automated 6-digit OTP delivery via [Resend API](https://resend.com/).
 - **Database & Ledger Persistence**: [Supabase PostgreSQL](https://supabase.com/)
+  - User identity (`public.users`) & active sessions (`public.sessions`).
   - Double-entry accounting ledger schema guaranteeing mathematical balance conservation.
   - Escrow locks releasing funds only upon ticket delivery / barcode verification.
   - Zero phantom token anomalies.

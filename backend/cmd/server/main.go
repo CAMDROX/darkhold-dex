@@ -13,6 +13,8 @@ import (
 	"time"
 
 	"darkhold-dex/backend/pkg/db"
+	"darkhold-dex/backend/pkg/handlers"
+	"darkhold-dex/backend/pkg/middleware"
 )
 
 // OrderType represents either LIMIT or MARKET
@@ -75,7 +77,7 @@ func NewOrderBook(collarPct float64) *OrderBook {
 }
 
 func (ob *OrderBook) InsertOrder(order *Order) (*Order, error) {
-	// 1. Dynamic Anti-Scalper Collar Validation (< 0.1ms)
+	// Dynamic Anti-Scalper Collar Validation (< 0.1ms)
 	if err := ob.collar.Validate(order); err != nil {
 		return nil, err
 	}
@@ -101,14 +103,17 @@ func main() {
 	database, err := db.Connect(ctx)
 	if err != nil {
 		log.Printf("⚠️  [Supabase DB] Notice: Database connection pending configuration: %v", err)
-		log.Printf("👉 Set DATABASE_URL in backend/.env to activate live double-entry persistence.")
 	} else {
 		defer database.Close()
 	}
 
 	ob := NewOrderBook(0.25) // +25% anti-scalper collar
+	mux := http.NewServeMux()
 
-	http.HandleFunc("/health", func(w http.ResponseWriter, r *http.Request) {
+	// ==========================================
+	// 1. Health & Telemetry Routes
+	// ==========================================
+	mux.HandleFunc("GET /health", func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "application/json")
 		dbStatus := "PENDING_CONFIG"
 		var pingLatency string
@@ -138,12 +143,30 @@ func main() {
 		})
 	})
 
-	http.HandleFunc("/api/orders", func(w http.ResponseWriter, r *http.Request) {
-		if r.Method != http.MethodPost {
-			http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
-			return
-		}
+	// ==========================================
+	// 2. Authentication & OTP Routes
+	// ==========================================
+	mux.HandleFunc("POST /api/auth/signup", handlers.Signup)
+	mux.HandleFunc("POST /api/auth/verify-otp", handlers.VerifyOTP)
+	mux.HandleFunc("POST /api/auth/resend-otp", handlers.ResendOTP)
+	mux.HandleFunc("POST /api/auth/login", handlers.Login)
+	mux.HandleFunc("POST /api/auth/refresh", handlers.Refresh)
 
+	// Protected Auth Routes
+	mux.HandleFunc("POST /api/auth/logout", middleware.RequireAuth(handlers.Logout))
+	mux.HandleFunc("GET /api/auth/me", middleware.RequireAuth(handlers.GetMe))
+
+	// ==========================================
+	// 3. Multi-Session Management Routes
+	// ==========================================
+	mux.HandleFunc("GET /api/auth/sessions", middleware.RequireAuth(handlers.GetSessions))
+	mux.HandleFunc("DELETE /api/auth/sessions/{id}", middleware.RequireAuth(handlers.RevokeSession))
+	mux.HandleFunc("POST /api/auth/logout-all", middleware.RequireAuth(handlers.RevokeAllSessions))
+
+	// ==========================================
+	// 4. In-Memory Orderbook Engine Routes
+	// ==========================================
+	mux.HandleFunc("POST /api/orders", func(w http.ResponseWriter, r *http.Request) {
 		var req Order
 		if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
 			http.Error(w, err.Error(), http.StatusBadRequest)
@@ -168,17 +191,20 @@ func main() {
 		})
 	})
 
-	// Server setup with graceful shutdown
+	// Wrap mux with CORS middleware
+	handler := middleware.CORS(mux)
+
 	port := os.Getenv("PORT")
 	if port == "" {
 		port = "8080"
 	}
 	server := &http.Server{
-		Addr: ":" + port,
+		Addr:    ":" + port,
+		Handler: handler,
 	}
 
 	go func() {
-		log.Printf("⚡ Darkhold High-Frequency OrderBook Engine listening on http://localhost:%s", port)
+		log.Printf("⚡ Darkhold High-Frequency Engine & Auth API listening on http://localhost:%s", port)
 		if err := server.ListenAndServe(); err != nil && err != http.ErrServerClosed {
 			log.Fatalf("Server error: %v", err)
 		}
