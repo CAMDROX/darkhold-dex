@@ -1,6 +1,7 @@
 package handlers
 
 import (
+	"context"
 	"encoding/json"
 	"fmt"
 	"log"
@@ -16,6 +17,7 @@ import (
 	"darkhold-dex/backend/pkg/models"
 
 	"github.com/google/uuid"
+	"github.com/jackc/pgx/v5"
 )
 
 // Signup handles user registration and OTP dispatch
@@ -124,8 +126,9 @@ func Signup(w http.ResponseWriter, r *http.Request) {
 	insertQuery := `
 		INSERT INTO public.users (
 			email, username, password_hash, is_email_verified, 
-			email_verification_otp, email_verification_otp_expires_at
-		) VALUES ($1, $2, $3, false, $4, $5)
+			email_verification_otp, email_verification_otp_expires_at,
+			role, kyc_status
+		) VALUES ($1, $2, $3, false, $4, $5, 'user', 'unverified')
 		RETURNING id;
 	`
 
@@ -138,6 +141,12 @@ func Signup(w http.ResponseWriter, r *http.Request) {
 		writeJSONError(w, http.StatusInternalServerError, "Database failed to create user")
 		return
 	}
+
+	// Initialize user_kyc record
+	_, _ = db.GlobalDB.Pool.Exec(r.Context(),
+		`INSERT INTO public.user_kyc (user_id, status) VALUES ($1, 'not_started') ON CONFLICT (user_id) DO NOTHING;`,
+		newUserID,
+	)
 
 	// Dispatch email asynchronously
 	go func() {
@@ -185,14 +194,14 @@ func VerifyOTP(w http.ResponseWriter, r *http.Request) {
 
 	query := `
 		SELECT id, email, username, is_email_verified, email_verification_otp, email_verification_otp_expires_at, 
-		       kyc_status, account_status, created_at
+		       role, kyc_status, account_status, created_at
 		FROM public.users 
 		WHERE LOWER(email) = $1;
 	`
 
 	err := db.GlobalDB.Pool.QueryRow(r.Context(), query, req.Email).Scan(
 		&user.ID, &user.Email, &user.Username, &user.IsEmailVerified,
-		&otpInDB, &otpExpiresAt, &user.KYCStatus, &user.AccountStatus, &user.CreatedAt,
+		&otpInDB, &otpExpiresAt, &user.Role, &user.KYCStatus, &user.AccountStatus, &user.CreatedAt,
 	)
 
 	if err != nil {
@@ -348,14 +357,14 @@ func Login(w http.ResponseWriter, r *http.Request) {
 
 	query := `
 		SELECT id, email, username, password_hash, is_email_verified, email_verified_at, 
-		       kyc_status, account_status, failed_login_attempts, locked_until, created_at
+		       role, kyc_status, account_status, failed_login_attempts, locked_until, created_at
 		FROM public.users
 		WHERE LOWER(email) = LOWER($1) OR LOWER(username) = LOWER($1);
 	`
 
 	err := db.GlobalDB.Pool.QueryRow(r.Context(), query, req.Identifier).Scan(
 		&user.ID, &user.Email, &user.Username, &pwdHash, &user.IsEmailVerified,
-		&user.EmailVerifiedAt, &user.KYCStatus, &user.AccountStatus,
+		&user.EmailVerifiedAt, &user.Role, &user.KYCStatus, &user.AccountStatus,
 		&user.FailedLoginAttempts, &user.LockedUntil, &user.CreatedAt,
 	)
 
@@ -426,16 +435,17 @@ func Refresh(w http.ResponseWriter, r *http.Request) {
 	var revokedAt *time.Time
 	var email string
 	var username string
+	var role string
 
 	query := `
-		SELECT s.id, s.user_id, s.expires_at, s.revoked_at, u.email, u.username
+		SELECT s.id, s.user_id, s.expires_at, s.revoked_at, u.email, u.username, u.role
 		FROM public.sessions s
 		JOIN public.users u ON s.user_id = u.id
 		WHERE s.refresh_token_hash = $1;
 	`
 
 	err := db.GlobalDB.Pool.QueryRow(r.Context(), query, tokenHash).Scan(
-		&sessionID, &userID, &expiresAt, &revokedAt, &email, &username,
+		&sessionID, &userID, &expiresAt, &revokedAt, &email, &username, &role,
 	)
 
 	if err != nil || revokedAt != nil || time.Now().After(expiresAt) {
@@ -450,7 +460,7 @@ func Refresh(w http.ResponseWriter, r *http.Request) {
 	)
 
 	// Issue new Access Token
-	newAccessToken, expiresIn, err := auth.GenerateAccessToken(userID, sessionID, email, username)
+	newAccessToken, expiresIn, err := auth.GenerateAccessToken(userID, sessionID, email, username, role)
 	if err != nil {
 		writeJSONError(w, http.StatusInternalServerError, "Failed to sign refreshed token")
 		return
@@ -500,12 +510,12 @@ func GetMe(w http.ResponseWriter, r *http.Request) {
 
 	var user models.User
 	query := `
-		SELECT id, email, username, is_email_verified, email_verified_at, kyc_status, account_status, created_at
+		SELECT id, email, username, is_email_verified, email_verified_at, role, kyc_status, account_status, created_at
 		FROM public.users WHERE id = $1;
 	`
 	err := db.GlobalDB.Pool.QueryRow(r.Context(), query, claims.UserID).Scan(
 		&user.ID, &user.Email, &user.Username, &user.IsEmailVerified,
-		&user.EmailVerifiedAt, &user.KYCStatus, &user.AccountStatus, &user.CreatedAt,
+		&user.EmailVerifiedAt, &user.Role, &user.KYCStatus, &user.AccountStatus, &user.CreatedAt,
 	)
 
 	if err != nil {
@@ -513,7 +523,336 @@ func GetMe(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	writeJSONSuccess(w, http.StatusOK, user.ToResponse())
+	kyc := fetchUserKYC(r.Context(), user.ID)
+	writeJSONSuccess(w, http.StatusOK, user.ToResponse(kyc))
+}
+
+// fetchUserKYC retrieves the user's KYC record from public.user_kyc
+func fetchUserKYC(ctx context.Context, userID uuid.UUID) *models.UserKYC {
+	if db.GlobalDB == nil || db.GlobalDB.Pool == nil {
+		return nil
+	}
+
+	var k models.UserKYC
+	query := `
+		SELECT user_id, status, provider, provider_reference, id_type, id_number, document_url,
+		       submitted_at, reviewed_at, reviewed_by, rejection_reason, created_at, updated_at
+		FROM public.user_kyc
+		WHERE user_id = $1;
+	`
+	err := db.GlobalDB.Pool.QueryRow(ctx, query, userID).Scan(
+		&k.UserID, &k.Status, &k.Provider, &k.ProviderReference, &k.IDType, &k.IDNumber, &k.DocumentURL,
+		&k.SubmittedAt, &k.ReviewedAt, &k.ReviewedBy, &k.RejectionReason, &k.CreatedAt, &k.UpdatedAt,
+	)
+	if err != nil {
+		return nil
+	}
+	return &k
+}
+
+// SubmitKYC allows an authenticated user to submit government ID/proof for verification
+func SubmitKYC(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodPost {
+		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
+		return
+	}
+
+	claims := middleware.GetClaims(r.Context())
+	if claims == nil {
+		writeJSONError(w, http.StatusUnauthorized, "Unauthorized")
+		return
+	}
+
+	if db.GlobalDB == nil || db.GlobalDB.Pool == nil {
+		writeJSONError(w, http.StatusInternalServerError, "Database connection not available")
+		return
+	}
+
+	var req models.SubmitKYCRequest
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		writeJSONError(w, http.StatusBadRequest, "Invalid request payload")
+		return
+	}
+
+	req.IDType = strings.TrimSpace(req.IDType)
+	req.IDNumber = strings.TrimSpace(req.IDNumber)
+	req.DocumentURL = strings.TrimSpace(req.DocumentURL)
+
+	if req.IDType == "" || req.IDNumber == "" {
+		writeJSONError(w, http.StatusBadRequest, "Government ID type and ID number are required")
+		return
+	}
+
+	providerRef := req.IDType + "-" + req.IDNumber
+
+	// Upsert into public.user_kyc
+	kycQuery := `
+		INSERT INTO public.user_kyc (
+			user_id, status, provider, provider_reference, id_type, id_number, document_url,
+			submitted_at, updated_at
+		) VALUES (
+			$1, 'pending', 'GOVT_ID_PROOF', $2, $3, $4, $5, NOW(), NOW()
+		)
+		ON CONFLICT (user_id) DO UPDATE SET
+			status = 'pending',
+			provider = 'GOVT_ID_PROOF',
+			provider_reference = $2,
+			id_type = $3,
+			id_number = $4,
+			document_url = $5,
+			submitted_at = NOW(),
+			rejection_reason = NULL,
+			updated_at = NOW();
+	`
+
+	_, err := db.GlobalDB.Pool.Exec(r.Context(), kycQuery,
+		claims.UserID, providerRef, req.IDType, req.IDNumber, req.DocumentURL,
+	)
+	if err != nil {
+		log.Printf("❌ [KYC Submit Error]: %v", err)
+		writeJSONError(w, http.StatusInternalServerError, "Failed to submit verification details")
+		return
+	}
+
+	// Update user kyc_status to 'pending'
+	_, _ = db.GlobalDB.Pool.Exec(r.Context(),
+		`UPDATE public.users SET kyc_status = 'pending', updated_at = NOW() WHERE id = $1`,
+		claims.UserID,
+	)
+
+	// Fetch updated user
+	var user models.User
+	userQuery := `
+		SELECT id, email, username, is_email_verified, email_verified_at, role, kyc_status, account_status, created_at
+		FROM public.users WHERE id = $1;
+	`
+	_ = db.GlobalDB.Pool.QueryRow(r.Context(), userQuery, claims.UserID).Scan(
+		&user.ID, &user.Email, &user.Username, &user.IsEmailVerified,
+		&user.EmailVerifiedAt, &user.Role, &user.KYCStatus, &user.AccountStatus, &user.CreatedAt,
+	)
+
+	kyc := fetchUserKYC(r.Context(), user.ID)
+
+	writeJSONSuccess(w, http.StatusOK, map[string]interface{}{
+		"message": "Government ID proof submitted successfully! Your account verification is now pending admin review.",
+		"user":    user.ToResponse(kyc),
+	})
+}
+
+// AdminListKYC lists all users with their verification/KYC status for admin review
+func AdminListKYC(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodGet {
+		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
+		return
+	}
+
+	if db.GlobalDB == nil || db.GlobalDB.Pool == nil {
+		writeJSONError(w, http.StatusInternalServerError, "Database connection not available")
+		return
+	}
+
+	statusFilter := r.URL.Query().Get("status")
+
+	baseQuery := `
+		SELECT u.id, u.email, u.username, u.role, u.kyc_status, u.is_email_verified, u.created_at,
+		       k.status, k.provider, k.provider_reference, k.id_type, k.id_number, k.document_url,
+		       k.submitted_at, k.reviewed_at, k.reviewed_by, k.rejection_reason
+		FROM public.users u
+		LEFT JOIN public.user_kyc k ON u.id = k.user_id
+	`
+
+	var rows pgx.Rows
+	var err error
+
+	if statusFilter != "" && statusFilter != "all" {
+		baseQuery += ` WHERE u.kyc_status = $1 OR k.status = $1 ORDER BY k.submitted_at DESC NULLS LAST, u.created_at DESC`
+		rows, err = db.GlobalDB.Pool.Query(r.Context(), baseQuery, statusFilter)
+	} else {
+		baseQuery += ` ORDER BY 
+			CASE WHEN u.kyc_status = 'pending' THEN 1 WHEN u.kyc_status = 'unverified' THEN 2 ELSE 3 END,
+			k.submitted_at DESC NULLS LAST, 
+			u.created_at DESC`
+		rows, err = db.GlobalDB.Pool.Query(r.Context(), baseQuery)
+	}
+
+	if err != nil {
+		log.Printf("❌ [AdminListKYC Error]: %v", err)
+		writeJSONError(w, http.StatusInternalServerError, "Failed to load verifications")
+		return
+	}
+	defer rows.Close()
+
+	type AdminVerificationItem struct {
+		User models.UserResponse `json:"user"`
+	}
+
+	var results []AdminVerificationItem
+	for rows.Next() {
+		var u models.User
+		var k models.UserKYC
+		var kStatus, kProvider, kProviderRef, kIDType, kIDNumber, kDocURL, kRejectionReason *string
+		var kSubmittedAt, kReviewedAt *time.Time
+		var kReviewedBy *uuid.UUID
+
+		scanErr := rows.Scan(
+			&u.ID, &u.Email, &u.Username, &u.Role, &u.KYCStatus, &u.IsEmailVerified, &u.CreatedAt,
+			&kStatus, &kProvider, &kProviderRef, &kIDType, &kIDNumber, &kDocURL,
+			&kSubmittedAt, &kReviewedAt, &kReviewedBy, &kRejectionReason,
+		)
+		if scanErr != nil {
+			log.Printf("⚠️  [AdminListKYC Scan Error]: %v", scanErr)
+			continue
+		}
+
+		k.UserID = u.ID
+		if kStatus != nil {
+			k.Status = *kStatus
+		} else {
+			k.Status = "not_started"
+		}
+		k.Provider = kProvider
+		k.ProviderReference = kProviderRef
+		k.IDType = kIDType
+		k.IDNumber = kIDNumber
+		k.DocumentURL = kDocURL
+		k.SubmittedAt = kSubmittedAt
+		k.ReviewedAt = kReviewedAt
+		k.ReviewedBy = kReviewedBy
+		k.RejectionReason = kRejectionReason
+
+		results = append(results, AdminVerificationItem{
+			User: u.ToResponse(&k),
+		})
+	}
+
+	writeJSONSuccess(w, http.StatusOK, map[string]interface{}{
+		"verifications": results,
+		"total":         len(results),
+	})
+}
+
+// AdminReviewKYC approves or rejects a user's verification
+func AdminReviewKYC(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodPost {
+		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
+		return
+	}
+
+	adminClaims := middleware.GetClaims(r.Context())
+	if adminClaims == nil || adminClaims.Role != "admin" {
+		writeJSONError(w, http.StatusForbidden, "Admin privileges required")
+		return
+	}
+
+	if db.GlobalDB == nil || db.GlobalDB.Pool == nil {
+		writeJSONError(w, http.StatusInternalServerError, "Database connection not available")
+		return
+	}
+
+	targetIDStr := r.PathValue("id")
+	if targetIDStr == "" {
+		writeJSONError(w, http.StatusBadRequest, "Target user ID is required")
+		return
+	}
+
+	targetUserID, err := uuid.Parse(targetIDStr)
+	if err != nil {
+		writeJSONError(w, http.StatusBadRequest, "Invalid target user UUID")
+		return
+	}
+
+	var req models.ReviewKYCRequest
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		writeJSONError(w, http.StatusBadRequest, "Invalid request payload")
+		return
+	}
+
+	req.Status = strings.ToLower(strings.TrimSpace(req.Status))
+	if req.Status != "approved" && req.Status != "rejected" && req.Status != "verified" && req.Status != "unverified" {
+		writeJSONError(w, http.StatusBadRequest, "Status must be 'approved' or 'rejected'")
+		return
+	}
+
+	var newKYCStatus, newUserKYCStatus string
+	var reason *string
+
+	if req.Status == "approved" || req.Status == "verified" {
+		newKYCStatus = "approved"
+		newUserKYCStatus = "verified"
+	} else {
+		newKYCStatus = "rejected"
+		newUserKYCStatus = "unverified"
+		trimReason := strings.TrimSpace(req.RejectionReason)
+		if trimReason == "" {
+			trimReason = "Identity proof could not be verified. Please provide a clear, valid government-issued ID."
+		}
+		reason = &trimReason
+	}
+
+	// Update user_kyc
+	kycUpdateQuery := `
+		INSERT INTO public.user_kyc (
+			user_id, status, reviewed_at, reviewed_by, rejection_reason, updated_at
+		) VALUES (
+			$1, $2, NOW(), $3, $4, NOW()
+		)
+		ON CONFLICT (user_id) DO UPDATE SET
+			status = $2,
+			reviewed_at = NOW(),
+			reviewed_by = $3,
+			rejection_reason = $4,
+			updated_at = NOW();
+	`
+	_, err = db.GlobalDB.Pool.Exec(r.Context(), kycUpdateQuery, targetUserID, newKYCStatus, adminClaims.UserID, reason)
+	if err != nil {
+		log.Printf("❌ [AdminReviewKYC Error]: %v", err)
+		writeJSONError(w, http.StatusInternalServerError, "Failed to update KYC status")
+		return
+	}
+
+	// Update public.users
+	_, err = db.GlobalDB.Pool.Exec(r.Context(),
+		`UPDATE public.users SET kyc_status = $1, updated_at = NOW() WHERE id = $2`,
+		newUserKYCStatus, targetUserID,
+	)
+	if err != nil {
+		log.Printf("❌ [AdminReviewUsers Error]: %v", err)
+		writeJSONError(w, http.StatusInternalServerError, "Failed to update user status")
+		return
+	}
+
+	// Dispatch notification email asynchronously to the user
+	var targetEmail, targetUsername string
+	_ = db.GlobalDB.Pool.QueryRow(r.Context(),
+		"SELECT email, username FROM public.users WHERE id = $1", targetUserID,
+	).Scan(&targetEmail, &targetUsername)
+
+	if targetEmail != "" {
+		go func(emailAddr, uName, status string, rejReason *string) {
+			if status == "verified" {
+				if err := email.SendKYCApprovedEmail(emailAddr, uName); err != nil {
+					log.Printf("⚠️  [Resend KYC Approval Email Failed]: %v", err)
+				}
+			} else if status == "unverified" {
+				rText := ""
+				if rejReason != nil {
+					rText = *rejReason
+				}
+				if err := email.SendKYCRejectedEmail(emailAddr, uName, rText); err != nil {
+					log.Printf("⚠️  [Resend KYC Rejection Email Failed]: %v", err)
+				}
+			}
+		}(targetEmail, targetUsername, newUserKYCStatus, reason)
+	}
+
+	writeJSONSuccess(w, http.StatusOK, map[string]interface{}{
+		"message":        fmt.Sprintf("User KYC status updated to '%s' and email notification dispatched", newUserKYCStatus),
+		"user_id":        targetUserID,
+		"kyc_status":     newUserKYCStatus,
+		"reviewed_by":    adminClaims.UserID,
+		"reviewed_at":    time.Now(),
+		"rejection_reason": reason,
+	})
 }
 
 // Helper: creates a session row in public.sessions and returns AuthResponse
@@ -544,16 +883,18 @@ func createSessionForUser(r *http.Request, user models.User) (*models.AuthRespon
 		return nil, fmt.Errorf("failed to record session: %w", err)
 	}
 
-	accessToken, expiresIn, err := auth.GenerateAccessToken(user.ID, sessionID, user.Email, user.Username)
+	accessToken, expiresIn, err := auth.GenerateAccessToken(user.ID, sessionID, user.Email, user.Username, user.Role)
 	if err != nil {
 		return nil, fmt.Errorf("failed to sign access token: %w", err)
 	}
+
+	kyc := fetchUserKYC(r.Context(), user.ID)
 
 	return &models.AuthResponse{
 		AccessToken:  accessToken,
 		RefreshToken: rawRefreshToken,
 		ExpiresIn:    expiresIn,
-		User:         user.ToResponse(),
+		User:         user.ToResponse(kyc),
 	}, nil
 }
 

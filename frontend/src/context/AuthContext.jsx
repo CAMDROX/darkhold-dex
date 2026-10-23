@@ -85,8 +85,9 @@ export function AuthProvider({ children }) {
     tokenStorage.setAuth(data.access_token, data.refresh_token, data.user)
     setUser(data.user)
     savePendingEmail('')
-    toast.success('Identity verified! Access granted.', {
+    toast.success('Email verified! Please submit your government ID to complete verification.', {
       icon: '🛡️',
+      duration: 5000,
     })
     return data
   }
@@ -98,6 +99,32 @@ export function AuthProvider({ children }) {
       icon: '📨',
     })
     return data
+  }
+
+  // Identity Verification (KYC) handler
+  const submitKYC = async (idType, idNumber, documentUrl) => {
+    const res = await authApi.submitKYC(idType, idNumber, documentUrl)
+    if (res.user) {
+      tokenStorage.setAuth(null, null, res.user)
+      setUser(res.user)
+    }
+    toast.success('Government ID submitted! Your verification is now pending admin review.', {
+      icon: '⏳',
+      duration: 5000,
+    })
+    return res
+  }
+
+  // Refresh user data from server
+  const refreshUser = async () => {
+    try {
+      const fresh = await authApi.getMe()
+      tokenStorage.setAuth(null, null, fresh)
+      setUser(fresh)
+      return fresh
+    } catch {
+      return null
+    }
   }
 
   // Logout handler
@@ -127,13 +154,9 @@ export function AuthProvider({ children }) {
         signup,
         verifyEmail,
         resendOTP,
+        submitKYC,
+        refreshUser,
         logout,
-        refreshUser: async () => {
-          try {
-            const fresh = await authApi.getMe()
-            setUser(fresh)
-          } catch {}
-        },
       }}
     >
       {children}

@@ -1,8 +1,9 @@
 import React from 'react'
-import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom'
+import { BrowserRouter, Routes, Route, Navigate, useLocation } from 'react-router-dom'
 import { AuthProvider, useAuth } from './context/AuthContext'
 import { Toaster } from 'react-hot-toast'
 import Navbar from './components/Navbar'
+import AppNavbar from './components/AppNavbar'
 import Footer from './components/Footer'
 import LandingPage from './pages/LandingPage'
 import LoginPage from './pages/LoginPage'
@@ -10,6 +11,7 @@ import SignupPage from './pages/SignupPage'
 import VerifyEmailPage from './pages/VerifyEmailPage'
 import DashboardPage from './pages/DashboardPage'
 import ProfilePage from './pages/ProfilePage'
+import AdminVerificationsPage from './pages/AdminVerificationsPage'
 
 // Protected Route wrapper
 function ProtectedRoute({ children }) {
@@ -31,6 +33,12 @@ function ProtectedRoute({ children }) {
 }
 
 function AppContent() {
+  const location = useLocation()
+  const isAppRoute = 
+    location.pathname.startsWith('/dashboard') || 
+    location.pathname.startsWith('/profile') || 
+    location.pathname.startsWith('/admin')
+
   return (
     <div className="min-h-screen bg-[#080706] text-[#E5E0D8] selection:bg-[#D4AF37]/30 selection:text-white relative">
       {/* Background Arcane Grid Texture */}
@@ -38,7 +46,7 @@ function AppContent() {
 
       {/* Main Content Layers */}
       <div className="relative z-10 flex flex-col min-h-screen">
-        <Navbar />
+        {isAppRoute ? <AppNavbar /> : <Navbar />}
         <main className="flex-1">
           <Routes>
             <Route path="/" element={<LandingPage />} />
@@ -60,6 +68,14 @@ function AppContent() {
               element={
                 <ProtectedRoute>
                   <ProfilePage />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/admin/verifications"
+              element={
+                <ProtectedRoute>
+                  <AdminVerificationsPage />
                 </ProtectedRoute>
               }
             />

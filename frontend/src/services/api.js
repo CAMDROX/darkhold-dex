@@ -19,7 +19,17 @@ export const tokenStorage = {
   setAuth: (accessToken, refreshToken, user) => {
     if (accessToken) localStorage.setItem(ACCESS_TOKEN_KEY, accessToken)
     if (refreshToken) localStorage.setItem(REFRESH_TOKEN_KEY, refreshToken)
-    if (user) localStorage.setItem(USER_KEY, JSON.stringify(user))
+    if (user) {
+      try {
+        const userToStore = { ...user }
+        if (userToStore.kyc && userToStore.kyc.document_url) {
+          userToStore.kyc = { ...userToStore.kyc, document_url: undefined }
+        }
+        localStorage.setItem(USER_KEY, JSON.stringify(userToStore))
+      } catch (err) {
+        console.warn('LocalStorage save warning:', err)
+      }
+    }
   },
   setAccessToken: (accessToken) => {
     if (accessToken) localStorage.setItem(ACCESS_TOKEN_KEY, accessToken)
@@ -141,5 +151,29 @@ export const authApi = {
   revokeAllSessions: () =>
     apiRequest('/api/auth/logout-all', {
       method: 'POST',
+    }),
+
+  // Identity Verification (KYC)
+  submitKYC: (idType, idNumber, documentUrl) =>
+    apiRequest('/api/user/kyc/submit', {
+      method: 'POST',
+      body: JSON.stringify({
+        id_type: idType,
+        id_number: idNumber,
+        document_url: documentUrl,
+      }),
+    }),
+
+  // Admin Verification Methods
+  adminListKYC: (status = '') =>
+    apiRequest(`/api/admin/verifications${status ? `?status=${status}` : ''}`),
+
+  adminReviewKYC: (userId, status, rejectionReason = '') =>
+    apiRequest(`/api/admin/verifications/${userId}/review`, {
+      method: 'POST',
+      body: JSON.stringify({
+        status,
+        rejection_reason: rejectionReason,
+      }),
     }),
 }

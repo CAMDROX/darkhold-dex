@@ -62,6 +62,18 @@ func RequireAuth(next http.HandlerFunc) http.HandlerFunc {
 	}
 }
 
+// RequireAdmin ensures the request is authenticated and user has role 'admin'
+func RequireAdmin(next http.HandlerFunc) http.HandlerFunc {
+	return RequireAuth(func(w http.ResponseWriter, r *http.Request) {
+		claims := GetClaims(r.Context())
+		if claims == nil || claims.Role != "admin" {
+			writeAuthError(w, http.StatusForbidden, "Forbidden: Admin privileges required")
+			return
+		}
+		next.ServeHTTP(w, r)
+	})
+}
+
 // GetClaims retrieves CustomClaims from request context
 func GetClaims(ctx context.Context) *auth.CustomClaims {
 	claims, ok := ctx.Value(ClaimsKey).(*auth.CustomClaims)
