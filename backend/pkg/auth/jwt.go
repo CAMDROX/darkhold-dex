@@ -18,6 +18,7 @@ type CustomClaims struct {
 	SessionID uuid.UUID `json:"session_id"`
 	Email     string    `json:"email"`
 	Username  string    `json:"username"`
+	Role      string    `json:"role"`
 	jwt.RegisteredClaims
 }
 
@@ -30,15 +31,20 @@ func getJWTSecret() []byte {
 }
 
 // GenerateAccessToken creates a short-lived signed JWT (15 minutes)
-func GenerateAccessToken(userID, sessionID uuid.UUID, email, username string) (string, int64, error) {
+func GenerateAccessToken(userID, sessionID uuid.UUID, email, username, role string) (string, int64, error) {
 	expiresIn := int64(15 * 60) // 15 minutes in seconds
 	expirationTime := time.Now().Add(time.Duration(expiresIn) * time.Second)
+
+	if role == "" {
+		role = "user"
+	}
 
 	claims := &CustomClaims{
 		UserID:    userID,
 		SessionID: sessionID,
 		Email:     email,
 		Username:  username,
+		Role:      role,
 		RegisteredClaims: jwt.RegisteredClaims{
 			ExpiresAt: jwt.NewNumericDate(expirationTime),
 			IssuedAt:  jwt.NewNumericDate(time.Now()),

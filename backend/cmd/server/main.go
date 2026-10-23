@@ -157,7 +157,19 @@ func main() {
 	mux.HandleFunc("GET /api/auth/me", middleware.RequireAuth(handlers.GetMe))
 
 	// ==========================================
-	// 3. Multi-Session Management Routes
+	// 3. User Identity Verification (KYC) Routes
+	// ==========================================
+	mux.HandleFunc("POST /api/user/kyc/submit", middleware.RequireAuth(handlers.SubmitKYC))
+	mux.HandleFunc("POST /api/user/verify-identity", middleware.RequireAuth(handlers.SubmitKYC))
+
+	// ==========================================
+	// 4. Admin Verification Review Routes
+	// ==========================================
+	mux.HandleFunc("GET /api/admin/verifications", middleware.RequireAdmin(handlers.AdminListKYC))
+	mux.HandleFunc("POST /api/admin/verifications/{id}/review", middleware.RequireAdmin(handlers.AdminReviewKYC))
+
+	// ==========================================
+	// 5. Multi-Session Management Routes
 	// ==========================================
 	mux.HandleFunc("GET /api/auth/sessions", middleware.RequireAuth(handlers.GetSessions))
 	mux.HandleFunc("DELETE /api/auth/sessions/{id}", middleware.RequireAuth(handlers.RevokeSession))

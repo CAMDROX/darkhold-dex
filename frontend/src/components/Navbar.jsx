@@ -3,7 +3,8 @@ import { Link, useLocation } from 'react-router-dom'
 import { useAuth } from '../context/AuthContext'
 import { 
   Shield, Cpu, Activity, Menu, X, ArrowUpRight, Lock, 
-  Sparkles, ExternalLink, User, LogOut, ChevronDown, Layers 
+  Sparkles, ExternalLink, User, LogOut, ChevronDown, Layers,
+  ShieldCheck, ShieldAlert, Clock, Crown
 } from 'lucide-react'
 
 export default function Navbar() {
@@ -126,23 +127,61 @@ export default function Navbar() {
                   {user?.username ? user.username.charAt(0).toUpperCase() : 'U'}
                 </div>
                 <div className="text-left hidden sm:block">
-                  <span className="block text-xs font-mono font-bold text-white leading-tight">
-                    {user?.username}
-                  </span>
-                  <span className="block text-[10px] font-mono text-[#22C55E] leading-tight">
-                    Verified
-                  </span>
+                  <div className="flex items-center gap-1.5">
+                    <span className="block text-xs font-mono font-bold text-white leading-tight">
+                      {user?.username}
+                    </span>
+                    {user?.role === 'admin' && (
+                      <span className="px-1 py-0.2 rounded text-[8px] font-mono font-bold bg-[#D4AF37]/20 border border-[#D4AF37]/50 text-[#F5D061] leading-none">
+                        ADMIN
+                      </span>
+                    )}
+                  </div>
+                  {/* Three Statuses: verified, pending, unverified */}
+                  {user?.kyc_status === 'verified' ? (
+                    <span className="block text-[10px] font-mono text-[#22C55E] leading-tight flex items-center gap-1">
+                      <ShieldCheck className="w-2.5 h-2.5" />
+                      <span>Verified</span>
+                    </span>
+                  ) : user?.kyc_status === 'pending' ? (
+                    <span className="block text-[10px] font-mono text-[#F5D061] leading-tight flex items-center gap-1">
+                      <Clock className="w-2.5 h-2.5" />
+                      <span>Pending Review</span>
+                    </span>
+                  ) : (
+                    <span className="block text-[10px] font-mono text-[#FB923C] leading-tight flex items-center gap-1">
+                      <ShieldAlert className="w-2.5 h-2.5" />
+                      <span>Unverified</span>
+                    </span>
+                  )}
                 </div>
                 <ChevronDown className="w-3.5 h-3.5 text-[#D4AF37]" />
               </button>
 
               {/* Profile Dropdown Menu */}
               {profileDropdownOpen && (
-                <div className="absolute right-0 mt-2 w-64 rounded-2xl bg-[#0D0B0A] border border-[#D4AF37]/30 shadow-[0_15px_40px_rgba(0,0,0,0.85)] p-2 z-50 space-y-1">
-                  <div className="px-3 py-2 border-b border-[#241E19] mb-1">
-                    <p className="text-xs font-mono font-bold text-white truncate">{user?.username}</p>
-                    <p className="text-[11px] font-mono text-[#8E867A] truncate">{user?.email}</p>
+                <div className="absolute right-0 mt-2 w-72 rounded-2xl bg-[#0D0B0A] border border-[#D4AF37]/30 shadow-[0_15px_40px_rgba(0,0,0,0.85)] p-2 z-50 space-y-1">
+                  <div className="px-3 py-2.5 border-b border-[#241E19] mb-1">
+                    <div className="flex items-center justify-between">
+                      <p className="text-xs font-mono font-bold text-white truncate">{user?.username}</p>
+                      <span className="text-[9px] font-mono uppercase px-1.5 py-0.5 rounded bg-[#1C1613] border border-[#3A2D25] text-[#D4AF37]">
+                        {user?.role === 'admin' ? '👑 Admin' : 'Trader'}
+                      </span>
+                    </div>
+                    <p className="text-[11px] font-mono text-[#8E867A] truncate mt-0.5">{user?.email}</p>
                   </div>
+
+                  {/* Admin Portal Link */}
+                  {user?.role === 'admin' && (
+                    <Link
+                      to="/admin/verifications"
+                      onClick={() => setProfileDropdownOpen(false)}
+                      className="flex items-center gap-2.5 px-3 py-2 rounded-lg text-xs font-mono text-[#F5D061] bg-[#D4AF37]/10 border border-[#D4AF37]/30 hover:bg-[#D4AF37]/20 transition-all font-semibold"
+                    >
+                      <Crown className="w-4 h-4 text-[#F5D061]" />
+                      <span>Compliance KYC Review</span>
+                    </Link>
+                  )}
 
                   <Link
                     to="/dashboard"
