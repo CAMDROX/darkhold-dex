@@ -53,6 +53,27 @@ go run cmd/server/main.go
 
 The engine will start on `http://localhost:8080/`.
 
+### 3. Run Concurrency Benchmarks & Integration Tests (Python / Locust / k6)
+
+Install the Python testing and stress-benchmarking suite:
+
+```bash
+pip install -r requirements.txt
+```
+
+- **Run Locust Stress Benchmark (1,000+ OPS simulation)**:
+  ```bash
+  locust -f benchmarks/locustfile.py --headless -u 100 -r 20 -t 30s --host http://localhost:8080
+  ```
+- **Run Pytest Integration Suite**:
+  ```bash
+  pytest test_engine.py
+  ```
+- **Run k6 Concurrency Benchmark**:
+  ```bash
+  k6 run benchmarks/k6_benchmark.js
+  ```
+
 ---
 
 ## 🎯 Problem Statement 07 Compliance Matrix
