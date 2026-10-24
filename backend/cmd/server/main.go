@@ -8,13 +8,18 @@ import (
 	"net/http"
 	"os"
 	"os/signal"
+	"strings"
 	"sync"
 	"syscall"
 	"time"
 
+	"darkhold-dex/backend/pkg/auth"
 	"darkhold-dex/backend/pkg/db"
 	"darkhold-dex/backend/pkg/handlers"
 	"darkhold-dex/backend/pkg/middleware"
+	"darkhold-dex/backend/pkg/ws"
+
+	"github.com/google/uuid"
 )
 
 // OrderType represents either LIMIT or MARKET
@@ -107,6 +112,13 @@ func main() {
 		defer database.Close()
 	}
 
+	// ==========================================
+	// Initialize Real-Time WebSocket Hub (Phase 1)
+	// ==========================================
+	wsHub := ws.NewHub()
+	ws.GlobalHub = wsHub
+	go wsHub.Run()
+
 	ob := NewOrderBook(0.25) // +25% anti-scalper collar
 	mux := http.NewServeMux()
 
@@ -140,11 +152,61 @@ func main() {
 				"status":       dbStatus,
 				"ping_latency": pingLatency,
 			},
+			"websocket_hub": wsHub.GetOnlineStats(),
 		})
 	})
 
 	// ==========================================
-	// 2. Authentication & OTP Routes
+	// 2. Real-Time WebSocket Gateway
+	// ==========================================
+	mux.HandleFunc("GET /ws", func(w http.ResponseWriter, r *http.Request) {
+		// Extract token from query parameter ?token= or Authorization header
+		token := r.URL.Query().Get("token")
+		if token == "" {
+			authHeader := r.Header.Get("Authorization")
+			if strings.HasPrefix(authHeader, "Bearer ") {
+				token = strings.TrimPrefix(authHeader, "Bearer ")
+			}
+		}
+
+		var userID *uuid.UUID
+		var username, role string
+
+		if token != "" {
+			claims, err := auth.ValidateAccessToken(token)
+			if err == nil && claims != nil {
+				userID = &claims.UserID
+				username = claims.Username
+				role = claims.Role
+			}
+		}
+
+		conn, err := ws.Upgrader.Upgrade(w, r, nil)
+		if err != nil {
+			log.Printf("⚠️  [WebSocket Upgrade Failed]: %v", err)
+			return
+		}
+
+		client := ws.NewClient(wsHub, conn, userID, username, role)
+		wsHub.Register(client)
+
+		// Auto-subscribe authenticated user to their private channel
+		if userID != nil {
+			wsHub.Subscribe(client, "user:"+userID.String())
+		}
+
+		// Auto-subscribe admins to compliance review room
+		if role == "admin" {
+			wsHub.Subscribe(client, ws.TopicAdminCompliance)
+		}
+
+		// Run Pumps in separate Goroutines
+		go client.WritePump()
+		go client.ReadPump()
+	})
+
+	// ==========================================
+	// 3. Authentication & OTP Routes
 	// ==========================================
 	mux.HandleFunc("POST /api/auth/signup", handlers.Signup)
 	mux.HandleFunc("POST /api/auth/verify-otp", handlers.VerifyOTP)
@@ -157,26 +219,26 @@ func main() {
 	mux.HandleFunc("GET /api/auth/me", middleware.RequireAuth(handlers.GetMe))
 
 	// ==========================================
-	// 3. User Identity Verification (KYC) Routes
+	// 4. User Identity Verification (KYC) Routes
 	// ==========================================
 	mux.HandleFunc("POST /api/user/kyc/submit", middleware.RequireAuth(handlers.SubmitKYC))
 	mux.HandleFunc("POST /api/user/verify-identity", middleware.RequireAuth(handlers.SubmitKYC))
 
 	// ==========================================
-	// 4. Admin Verification Review Routes
+	// 5. Admin Verification Review Routes
 	// ==========================================
 	mux.HandleFunc("GET /api/admin/verifications", middleware.RequireAdmin(handlers.AdminListKYC))
 	mux.HandleFunc("POST /api/admin/verifications/{id}/review", middleware.RequireAdmin(handlers.AdminReviewKYC))
 
 	// ==========================================
-	// 5. Multi-Session Management Routes
+	// 6. Multi-Session Management Routes
 	// ==========================================
 	mux.HandleFunc("GET /api/auth/sessions", middleware.RequireAuth(handlers.GetSessions))
 	mux.HandleFunc("DELETE /api/auth/sessions/{id}", middleware.RequireAuth(handlers.RevokeSession))
 	mux.HandleFunc("POST /api/auth/logout-all", middleware.RequireAuth(handlers.RevokeAllSessions))
 
 	// ==========================================
-	// 4. In-Memory Orderbook Engine Routes
+	// 7. In-Memory Orderbook Engine Routes
 	// ==========================================
 	mux.HandleFunc("POST /api/orders", func(w http.ResponseWriter, r *http.Request) {
 		var req Order
@@ -216,7 +278,7 @@ func main() {
 	}
 
 	go func() {
-		log.Printf("⚡ Darkhold High-Frequency Engine & Auth API listening on http://localhost:%s", port)
+		log.Printf("⚡ Darkhold High-Frequency Engine, Auth API & WebSocket Hub listening on http://localhost:%s", port)
 		if err := server.ListenAndServe(); err != nil && err != http.ErrServerClosed {
 			log.Fatalf("Server error: %v", err)
 		}
