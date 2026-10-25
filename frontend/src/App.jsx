@@ -11,6 +11,7 @@ import LoginPage from './pages/LoginPage'
 import SignupPage from './pages/SignupPage'
 import VerifyEmailPage from './pages/VerifyEmailPage'
 import DashboardPage from './pages/DashboardPage'
+import AssetsPage from './pages/AssetsPage'
 import ProfilePage from './pages/ProfilePage'
 import AdminVerificationsPage from './pages/AdminVerificationsPage'
 
@@ -37,6 +38,7 @@ function AppContent() {
   const location = useLocation()
   const isAppRoute = 
     location.pathname.startsWith('/dashboard') || 
+    location.pathname.startsWith('/assets') || 
     location.pathname.startsWith('/profile') || 
     location.pathname.startsWith('/admin')
 
@@ -61,6 +63,14 @@ function AppContent() {
               element={
                 <ProtectedRoute>
                   <DashboardPage />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/assets"
+              element={
+                <ProtectedRoute>
+                  <AssetsPage />
                 </ProtectedRoute>
               }
             />

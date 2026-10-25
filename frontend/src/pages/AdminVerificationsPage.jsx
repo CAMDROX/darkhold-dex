@@ -34,12 +34,6 @@ export default function AdminVerificationsPage() {
   const [rejectionReason, setRejectionReason] = useState('')
   const [isProcessing, setIsProcessing] = useState(false)
 
-  // Admin access guard
-  if (user && user.role !== 'admin') {
-    toast.error('Admin access required.')
-    return <Navigate to="/dashboard" replace />
-  }
-
   const fetchVerifications = async () => {
     setIsLoading(true)
     try {
@@ -53,8 +47,10 @@ export default function AdminVerificationsPage() {
   }
 
   useEffect(() => {
-    fetchVerifications()
-  }, [filter])
+    if (user?.role === 'admin') {
+      fetchVerifications()
+    }
+  }, [filter, user?.role])
 
   // Real-time WebSocket subscriber for zero-reload verification queue updates
   useEffect(() => {
@@ -104,6 +100,11 @@ export default function AdminVerificationsPage() {
       unsubUpdated()
     }
   }, [subscribe])
+
+  // Admin access guard (executed after all React hooks are registered)
+  if (user && user.role !== 'admin') {
+    return <Navigate to="/dashboard" replace />
+  }
 
   const handleApprove = async (userId, username) => {
     setIsProcessing(true)

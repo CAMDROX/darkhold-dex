@@ -177,3 +177,35 @@ export const authApi = {
       }),
     }),
 }
+
+// Relic Inventory & Ticket Ingestion Methods
+export const ticketsApi = {
+  getEvents: () => apiRequest('/api/events'),
+
+  importTicket: (ticketId, eventSymbol) =>
+    apiRequest('/api/tickets/import', {
+      method: 'POST',
+      body: JSON.stringify({
+        ticket_id: ticketId,
+        event_symbol: eventSymbol,
+      }),
+    }),
+
+  getMyRelics: () => apiRequest('/api/tickets/mine'),
+}
+
+// Fiat On-Ramp & Treasury Methods
+export const walletApi = {
+  simulateDeposit: (amount, currency, paymentId) =>
+    apiRequest('/api/wallet/deposit/simulate', {
+      method: 'POST',
+      body: JSON.stringify({
+        amount: Number(amount),
+        currency,
+        payment_id: paymentId,
+      }),
+    }),
+
+  getBalances: () => apiRequest('/api/wallet/balances'),
+}
+
