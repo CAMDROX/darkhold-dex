@@ -17,9 +17,11 @@ import (
 	"darkhold-dex/backend/pkg/db"
 	"darkhold-dex/backend/pkg/handlers"
 	"darkhold-dex/backend/pkg/middleware"
+	"darkhold-dex/backend/pkg/queue"
 	"darkhold-dex/backend/pkg/ws"
 
 	"github.com/google/uuid"
+	"github.com/hibiken/asynq"
 )
 
 // OrderType represents either LIMIT or MARKET
@@ -119,6 +121,26 @@ func main() {
 	ws.GlobalHub = wsHub
 	go wsHub.Run()
 
+	// ==========================================
+	// Initialize Redis & Asynq Background Queue
+	// ==========================================
+	_ = queue.InitClient()
+	defer queue.CloseClient()
+
+	// Start Redis Pub/Sub bridge to relay events from external workers to wsHub
+	queue.StartWSEventBridge(ctx, wsHub)
+
+	var asynqServer *asynq.Server
+	if database != nil && database.Pool != nil {
+		var err error
+		asynqServer, err = queue.StartWorker(ctx, database.Pool, wsHub)
+		if err != nil {
+			log.Printf("⚠️  [Asynq Worker] Background worker initialization notice: %v", err)
+		} else {
+			defer asynqServer.Shutdown()
+		}
+	}
+
 	ob := NewOrderBook(0.25) // +25% anti-scalper collar
 	mux := http.NewServeMux()
 
@@ -153,6 +175,11 @@ func main() {
 				"ping_latency": pingLatency,
 			},
 			"websocket_hub": wsHub.GetOnlineStats(),
+			"asynq_queue": map[string]interface{}{
+				"status": "CONFIGURED",
+				"driver": "Redis / Asynq",
+				"queues": []string{"critical", "default", "low"},
+			},
 		})
 	})
 
@@ -238,7 +265,20 @@ func main() {
 	mux.HandleFunc("POST /api/auth/logout-all", middleware.RequireAuth(handlers.RevokeAllSessions))
 
 	// ==========================================
-	// 7. In-Memory Orderbook Engine Routes
+	// 7. Relic Inventory & Ticket Ingestion Routes
+	// ==========================================
+	mux.HandleFunc("GET /api/events", handlers.ListEvents)
+	mux.HandleFunc("POST /api/tickets/import", middleware.RequireAuth(handlers.ImportTicket))
+	mux.HandleFunc("GET /api/tickets/mine", middleware.RequireAuth(handlers.ListUserRelics))
+
+	// ==========================================
+	// 8. Fiat Treasury & Simulated Deposit Routes
+	// ==========================================
+	mux.HandleFunc("POST /api/wallet/deposit/simulate", middleware.RequireAuth(handlers.SimulateDeposit))
+	mux.HandleFunc("GET /api/wallet/balances", middleware.RequireAuth(handlers.GetWalletBalances))
+
+	// ==========================================
+	// 9. In-Memory Orderbook Engine Routes
 	// ==========================================
 	mux.HandleFunc("POST /api/orders", func(w http.ResponseWriter, r *http.Request) {
 		var req Order

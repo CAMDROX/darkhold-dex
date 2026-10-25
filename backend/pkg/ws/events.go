@@ -13,8 +13,17 @@ const (
 	EventL2DepthSnapshot = "L2_DEPTH_SNAPSHOT"
 	EventTradeExecuted  = "TRADE_EXECUTED"
 
+	// Relic Inventory & Ticket Ingestion Events
+	EventTicketImported     = "TICKET_IMPORTED"
+	EventTicketImportFailed = "TICKET_IMPORT_FAILED"
+	EventImportSuccess      = "IMPORT_SUCCESS"
+	EventImportFailed       = "IMPORT_FAILED"
+
 	// Dutch Auction Events
 	EventAuctionTick = "AUCTION_TICK"
+
+	// Fiat On-Ramp & Treasury Events
+	EventDepositSuccess = "DEPOSIT_SUCCESS"
 
 	// Connection & Subscription Acknowledgements
 	EventConnected    = "CONNECTED"

@@ -67,16 +67,19 @@ export function WebSocketProvider({ children }) {
           const msg = JSON.parse(event.data)
           setLastMessage(msg)
 
-          // Disseminate to registered event listeners
-          if (msg.event && subscribersRef.current.has(msg.event)) {
-            subscribersRef.current.get(msg.event).forEach((cb) => {
-              try {
-                cb(msg.data, msg)
-              } catch (err) {
-                console.error('[WebSocket Callback Error]:', err)
-              }
-            })
-          }
+          // Disseminate to registered event listeners (support msg.event, msg.type, msg.data.type)
+          const matchedEvents = new Set([msg.event, msg.type, msg.data?.type, msg.data?.event].filter(Boolean))
+          matchedEvents.forEach((evtName) => {
+            if (subscribersRef.current.has(evtName)) {
+              subscribersRef.current.get(evtName).forEach((cb) => {
+                try {
+                  cb(msg.data || msg, msg)
+                } catch (err) {
+                  console.error('[WebSocket Callback Error]:', err)
+                }
+              })
+            }
+          })
 
           // Global Handlers
           if (msg.event === 'KYC_STATUS_UPDATED') {
