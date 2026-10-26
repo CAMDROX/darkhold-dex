@@ -9,12 +9,12 @@ import (
 	"os"
 	"os/signal"
 	"strings"
-	"sync"
 	"syscall"
 	"time"
 
 	"darkhold-dex/backend/pkg/auth"
 	"darkhold-dex/backend/pkg/db"
+	"darkhold-dex/backend/pkg/engine"
 	"darkhold-dex/backend/pkg/handlers"
 	"darkhold-dex/backend/pkg/middleware"
 	"darkhold-dex/backend/pkg/queue"
@@ -23,84 +23,6 @@ import (
 	"github.com/google/uuid"
 	"github.com/hibiken/asynq"
 )
-
-// OrderType represents either LIMIT or MARKET
-type OrderType string
-
-const (
-	OrderTypeLimit  OrderType = "LIMIT"
-	OrderTypeMarket OrderType = "MARKET"
-)
-
-// Side represents BUY or SELL
-type Side string
-
-const (
-	SideBuy  Side = "BUY"
-	SideSell Side = "SELL"
-)
-
-// Order represents an incoming secondary order
-type Order struct {
-	ID        string    `json:"id"`
-	MarketID  string    `json:"market_id"`
-	UserID    string    `json:"user_id"`
-	Type      OrderType `json:"type"`
-	Side      Side      `json:"side"`
-	Price     float64   `json:"price"`
-	FaceValue float64   `json:"face_value"`
-	Quantity  int       `json:"quantity"`
-	CreatedAt time.Time `json:"created_at"`
-}
-
-// DynamicCollar enforces anti-scalping ceilings pinned to face value
-type DynamicCollar struct {
-	MaxMarkupPct float64 // e.g. 0.25 = +25%
-}
-
-func (dc *DynamicCollar) Validate(order *Order) error {
-	ceiling := order.FaceValue * (1.0 + dc.MaxMarkupPct)
-	if order.Price > ceiling {
-		return fmt.Errorf("COLLAR_BREACH: price ₹%.2f exceeds collar ceiling of ₹%.2f (+%.0f%% of face value ₹%.2f)",
-			order.Price, ceiling, dc.MaxMarkupPct*100, order.FaceValue)
-	}
-	return nil
-}
-
-// In-Memory FIFO OrderBook
-type OrderBook struct {
-	mu     sync.RWMutex
-	bids   []*Order
-	asks   []*Order
-	collar DynamicCollar
-}
-
-func NewOrderBook(collarPct float64) *OrderBook {
-	return &OrderBook{
-		bids:   make([]*Order, 0),
-		asks:   make([]*Order, 0),
-		collar: DynamicCollar{MaxMarkupPct: collarPct},
-	}
-}
-
-func (ob *OrderBook) InsertOrder(order *Order) (*Order, error) {
-	// Dynamic Anti-Scalper Collar Validation (< 0.1ms)
-	if err := ob.collar.Validate(order); err != nil {
-		return nil, err
-	}
-
-	ob.mu.Lock()
-	defer ob.mu.Unlock()
-
-	// In-memory FIFO queue insertion
-	if order.Side == SideBuy {
-		ob.bids = append(ob.bids, order)
-	} else {
-		ob.asks = append(ob.asks, order)
-	}
-
-	return order, nil
-}
 
 func main() {
 	ctx, cancel := context.WithCancel(context.Background())
@@ -141,7 +63,21 @@ func main() {
 		}
 	}
 
-	ob := NewOrderBook(0.25) // +25% anti-scalper collar
+	// ==========================================
+	// Initialize In-Memory Price-Time Matching Engine
+	// ==========================================
+	var matchingEngine *engine.Engine
+	if database != nil && database.Pool != nil {
+		matchingEngine = engine.InitGlobalEngine(database.Pool, wsHub)
+		go func() {
+			if err := matchingEngine.LoadActiveOrdersFromDB(ctx); err != nil {
+				log.Printf("⚠️  [Engine Init] Hydration warning: %v", err)
+			}
+		}()
+	} else {
+		matchingEngine = engine.InitGlobalEngine(nil, wsHub)
+	}
+
 	mux := http.NewServeMux()
 
 	// ==========================================
@@ -278,32 +214,15 @@ func main() {
 	mux.HandleFunc("GET /api/wallet/balances", middleware.RequireAuth(handlers.GetWalletBalances))
 
 	// ==========================================
-	// 9. In-Memory Orderbook Engine Routes
+	// 9. Secondary Trading & In-Memory Matching Engine Routes
 	// ==========================================
-	mux.HandleFunc("POST /api/orders", func(w http.ResponseWriter, r *http.Request) {
-		var req Order
-		if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-			http.Error(w, err.Error(), http.StatusBadRequest)
-			return
-		}
-		req.CreatedAt = time.Now()
-
-		order, err := ob.InsertOrder(&req)
-		if err != nil {
-			w.WriteHeader(http.StatusUnprocessableEntity) // 422 Scalper Collar Violation
-			json.NewEncoder(w).Encode(map[string]string{
-				"error": err.Error(),
-				"code":  "422_COLLAR_BREACH",
-			})
-			return
-		}
-
-		w.Header().Set("Content-Type", "application/json")
-		json.NewEncoder(w).Encode(map[string]interface{}{
-			"status": "ACCEPTED_INTO_FIFO_BOOK",
-			"order":  order,
-		})
-	})
+	mux.HandleFunc("POST /api/orders", middleware.RequireAuth(handlers.PlaceOrder))
+	mux.HandleFunc("DELETE /api/orders/{id}", middleware.RequireAuth(handlers.CancelOrder))
+	mux.HandleFunc("POST /api/orders/{id}/cancel", middleware.RequireAuth(handlers.CancelOrder))
+	mux.HandleFunc("GET /api/orders/mine", middleware.RequireAuth(handlers.ListMyOrders))
+	mux.HandleFunc("GET /api/markets/{symbol}/orderbook", handlers.GetMarketOrderBook)
+	mux.HandleFunc("GET /api/markets/{symbol}/trades", handlers.GetMarketTrades)
+	mux.HandleFunc("GET /api/engine/telemetry", handlers.GetEngineTelemetry)
 
 	// Wrap mux with CORS middleware
 	handler := middleware.CORS(mux)

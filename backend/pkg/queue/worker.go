@@ -37,6 +37,7 @@ func NewTicketWorker(pool *pgxpool.Pool, hub *ws.Hub) *TicketWorker {
 // RegisterHandlers registers task handlers with the Asynq ServeMux
 func (w *TicketWorker) RegisterHandlers(mux *asynq.ServeMux) {
 	mux.HandleFunc(TypeTicketVerify, w.ProcessTicketVerify)
+	mux.HandleFunc(TypeTradeSettle, w.HandleTradeSettlement)
 }
 
 // notifyUser sends the event to the user via direct WebSocket (if in-process)
@@ -457,6 +458,261 @@ func resolveAdminUserID(ctx context.Context, tx pgx.Tx) (uuid.UUID, error) {
 	return uuid.Nil, errors.New("no users or admin found in database: please create an admin user or verify public.users")
 }
 
+// HandleTradeSettlement processes the asynchronous 'trade:settle' task from the 'settlements' queue
+func (w *TicketWorker) HandleTradeSettlement(ctx context.Context, t *asynq.Task) error {
+	var payload TradeSettlePayload
+	if err := json.Unmarshal(t.Payload(), &payload); err != nil {
+		log.Printf("❌ [Trade Settlement Worker] Unmarshal payload failed: %v", err)
+		return fmt.Errorf("json.Unmarshal failed: %v: %w", err, asynq.SkipRetry)
+	}
+
+	log.Printf("🏛️  [Trade Settlement Worker] Processing settlement: Maker=%s Taker=%s Event=%s Price=%.2f Qty=%d",
+		payload.MakerOrderID, payload.TakerOrderID, payload.EventSymbol, payload.Price, payload.Quantity)
+
+	if w.pool == nil {
+		return errors.New("database pool is nil")
+	}
+
+	tx, err := w.pool.Begin(ctx)
+	if err != nil {
+		return fmt.Errorf("failed to begin database transaction: %w", err)
+	}
+	defer tx.Rollback(ctx)
+
+	// 1. Fetch Maker and Taker order details
+	var makerUserID, takerUserID uuid.UUID
+	var makerSide, takerSide string
+	var makerPrice, takerPrice float64
+	var quoteCurrency string
+
+	err = tx.QueryRow(ctx, `
+		SELECT user_id, side, price, COALESCE(quote_currency, 'INR')
+		FROM public.orders WHERE id = $1
+	`, payload.MakerOrderID).Scan(&makerUserID, &makerSide, &makerPrice, &quoteCurrency)
+	if err != nil {
+		return fmt.Errorf("failed to query maker order: %w", err)
+	}
+
+	err = tx.QueryRow(ctx, `
+		SELECT user_id, side, price
+		FROM public.orders WHERE id = $1
+	`, payload.TakerOrderID).Scan(&takerUserID, &takerSide, &takerPrice)
+	if err != nil {
+		return fmt.Errorf("failed to query taker order: %w", err)
+	}
+
+	var buyerID, sellerID uuid.UUID
+	var buyerLimitPrice float64
+
+	if makerSide == "BUY" {
+		buyerID = makerUserID
+		sellerID = takerUserID
+		buyerLimitPrice = makerPrice
+	} else {
+		buyerID = takerUserID
+		sellerID = makerUserID
+		buyerLimitPrice = takerPrice
+	}
+
+	// 2. Fetch Event ID
+	var eventID uuid.UUID
+	err = tx.QueryRow(ctx, `SELECT id FROM public.events WHERE symbol = $1`, payload.EventSymbol).Scan(&eventID)
+	if err != nil {
+		return fmt.Errorf("failed to find event %s: %w", payload.EventSymbol, err)
+	}
+
+	// 3. Find Seller's locked relic in inventory
+	var relicID uuid.UUID
+	var externalTicketID string
+	err = tx.QueryRow(ctx, `
+		SELECT id, external_ticket_id 
+		FROM public.relic_inventory
+		WHERE owner_id = $1 AND event_id = $2 AND status = 'ESCROW_LOCKED'
+		ORDER BY created_at ASC
+		LIMIT 1
+		FOR UPDATE;
+	`, sellerID, eventID).Scan(&relicID, &externalTicketID)
+
+	if err != nil {
+		// Fallback check if marked AVAILABLE
+		err = tx.QueryRow(ctx, `
+			SELECT id, external_ticket_id 
+			FROM public.relic_inventory
+			WHERE owner_id = $1 AND event_id = $2 AND status = 'AVAILABLE'
+			ORDER BY created_at ASC
+			LIMIT 1
+			FOR UPDATE;
+		`, sellerID, eventID).Scan(&relicID, &externalTicketID)
+		if err != nil {
+			return fmt.Errorf("seller %s has no eligible relic in vault for %s: %w", sellerID, payload.EventSymbol, err)
+		}
+	}
+
+	// 4. Cryptographic QR Rotation (CRITICAL)
+	hashInput := fmt.Sprintf("%s:%s:%s:%d", eventID, externalTicketID, buyerID, time.Now().UnixNano())
+	sha := sha256.Sum256([]byte(hashInput))
+	newQRHash := hex.EncodeToString(sha[:])
+
+	// Update relic_inventory: ownership changes to buyer, status = AVAILABLE, new QR hash
+	_, err = tx.Exec(ctx, `
+		UPDATE public.relic_inventory
+		SET owner_id = $1, status = 'AVAILABLE', internal_qr_hash = $2, updated_at = NOW()
+		WHERE id = $3;
+	`, buyerID, newQRHash, relicID)
+	if err != nil {
+		return fmt.Errorf("failed to update relic inventory: %w", err)
+	}
+
+	// 5. Update Maker & Taker Orders
+	for _, oID := range []uuid.UUID{payload.MakerOrderID, payload.TakerOrderID} {
+		_, err = tx.Exec(ctx, `
+			UPDATE public.orders
+			SET filled_quantity = filled_quantity + $1,
+			    status = CASE WHEN filled_quantity + $1 >= quantity THEN 'FILLED' ELSE 'PARTIALLY_FILLED' END,
+			    updated_at = NOW()
+			WHERE id = $2;
+		`, payload.Quantity, oID)
+		if err != nil {
+			return fmt.Errorf("failed to update order status for %s: %w", oID, err)
+		}
+	}
+
+	// 6. Insert row into public.trades
+	tradeID := uuid.New()
+	_, err = tx.Exec(ctx, `
+		INSERT INTO public.trades (id, taker_order_id, maker_order_id, event_symbol, price, quantity, executed_at)
+		VALUES ($1, $2, $3, $4, $5, $6, NOW())
+		ON CONFLICT (id) DO NOTHING;
+	`, tradeID, payload.TakerOrderID, payload.MakerOrderID, payload.EventSymbol, payload.Price, payload.Quantity)
+	if err != nil {
+		return fmt.Errorf("failed to insert trade row: %w", err)
+	}
+
+	// 7. Double-Entry Ledger Swaps
+	buyerFiatEscrowAccountID, err := getAccountJIT(ctx, tx, buyerID, quoteCurrency, "ESCROW_LOCKED")
+	if err != nil {
+		return err
+	}
+	buyerFiatAvailAccountID, err := getAccountJIT(ctx, tx, buyerID, quoteCurrency, "AVAILABLE")
+	if err != nil {
+		return err
+	}
+	sellerFiatAvailAccountID, err := getAccountJIT(ctx, tx, sellerID, quoteCurrency, "AVAILABLE")
+	if err != nil {
+		return err
+	}
+
+	sellerTicketEscrowAccountID, err := getAccountJIT(ctx, tx, sellerID, payload.EventSymbol, "ESCROW_LOCKED")
+	if err != nil {
+		return err
+	}
+	buyerTicketAvailAccountID, err := getAccountJIT(ctx, tx, buyerID, payload.EventSymbol, "AVAILABLE")
+	if err != nil {
+		return err
+	}
+
+	var txnID uuid.UUID
+	err = tx.QueryRow(ctx, `
+		INSERT INTO public.transactions (reference_id, transaction_type)
+		VALUES ($1, 'TRADE_SETTLEMENT')
+		RETURNING id;
+	`, tradeID.String()).Scan(&txnID)
+	if err != nil {
+		return fmt.Errorf("failed to insert transaction wrapper: %w", err)
+	}
+
+	// Swap Fiat: Buyer's locked fiat -> Seller's available fiat
+	totalFiat := payload.Price * float64(payload.Quantity)
+	_, err = tx.Exec(ctx, `
+		INSERT INTO public.ledger_entries (transaction_id, account_id, amount)
+		VALUES 
+			($1, $2, $3),
+			($1, $4, $5);
+	`, txnID, buyerFiatEscrowAccountID, -totalFiat, sellerFiatAvailAccountID, totalFiat)
+	if err != nil {
+		return fmt.Errorf("failed to record fiat ledger entries: %w", err)
+	}
+
+	// Swap Ticket: Seller's locked ticket -> Buyer's available ticket
+	totalTickets := float64(payload.Quantity)
+	_, err = tx.Exec(ctx, `
+		INSERT INTO public.ledger_entries (transaction_id, account_id, amount)
+		VALUES 
+			($1, $2, $3),
+			($1, $4, $5);
+	`, txnID, sellerTicketEscrowAccountID, -totalTickets, buyerTicketAvailAccountID, totalTickets)
+	if err != nil {
+		return fmt.Errorf("failed to record ticket ledger entries: %w", err)
+	}
+
+	// Refund buyer excess locked fiat if buyer's limit price > trade execution price
+	if buyerLimitPrice > payload.Price {
+		excessRefund := (buyerLimitPrice - payload.Price) * float64(payload.Quantity)
+		if excessRefund > 0 {
+			_, err = tx.Exec(ctx, `
+				INSERT INTO public.ledger_entries (transaction_id, account_id, amount)
+				VALUES 
+					($1, $2, $3),
+					($1, $4, $5);
+			`, txnID, buyerFiatEscrowAccountID, -excessRefund, buyerFiatAvailAccountID, excessRefund)
+			if err != nil {
+				return fmt.Errorf("failed to refund excess locked fiat: %w", err)
+			}
+		}
+	}
+
+	if err := tx.Commit(ctx); err != nil {
+		return fmt.Errorf("failed to commit settlement transaction: %w", err)
+	}
+
+	log.Printf("🏛️  [Trade Settlement Complete] Trade %s settled! Fiat: ₹%.2f, Relic transferred & QR rotated.",
+		tradeID, totalFiat)
+
+	// 8. WebSocket Notifications to both users' private channels
+	settleData := map[string]interface{}{
+		"type":           "TRADE_SETTLED",
+		"event":          "TRADE_SETTLED",
+		"trade_id":       tradeID.String(),
+		"maker_order_id": payload.MakerOrderID.String(),
+		"taker_order_id": payload.TakerOrderID.String(),
+		"event_symbol":   payload.EventSymbol,
+		"price":          payload.Price,
+		"quantity":       payload.Quantity,
+		"buyer_id":       buyerID.String(),
+		"seller_id":      sellerID.String(),
+		"timestamp":      time.Now().UTC(),
+	}
+
+	w.notifyUser(ctx, buyerID, "TRADE_SETTLED", settleData)
+	w.notifyUser(ctx, sellerID, "TRADE_SETTLED", settleData)
+
+	if w.hub != nil {
+		w.hub.BroadcastAll("TRADE_EXECUTED", settleData)
+		w.hub.BroadcastAll("TRADE_SETTLED", settleData)
+	}
+
+	return nil
+}
+
+func getAccountJIT(ctx context.Context, tx pgx.Tx, userID uuid.UUID, currency, accountType string) (uuid.UUID, error) {
+	var id uuid.UUID
+	query := `
+		WITH ins AS (
+			INSERT INTO public.accounts (user_id, currency, account_type)
+			VALUES ($1, $2, $3)
+			ON CONFLICT (user_id, currency, account_type) DO NOTHING
+			RETURNING id
+		)
+		SELECT id FROM ins
+		UNION ALL
+		SELECT id FROM public.accounts
+		WHERE user_id = $1 AND currency = $2 AND account_type = $3
+		LIMIT 1;
+	`
+	err := tx.QueryRow(ctx, query, userID, currency, accountType).Scan(&id)
+	return id, err
+}
+
 // StartWorker initializes and runs the background Asynq worker server
 func StartWorker(ctx context.Context, pool *pgxpool.Pool, hub *ws.Hub) (*asynq.Server, error) {
 	srv := NewServer()
@@ -466,7 +722,7 @@ func StartWorker(ctx context.Context, pool *pgxpool.Pool, hub *ws.Hub) (*asynq.S
 	worker.RegisterHandlers(mux)
 
 	go func() {
-		log.Println("⚡ [Asynq Server] Background worker process started. Listening on 'critical', 'default', 'low' queues.")
+		log.Println("⚡ [Asynq Server] Background worker process started. Listening on 'settlements', 'critical', 'default', 'low' queues.")
 		if err := srv.Run(mux); err != nil && !errors.Is(err, asynq.ErrServerClosed) {
 			log.Printf("⚠️  [Asynq Server] Worker stopped with error: %v", err)
 		}
@@ -474,3 +730,4 @@ func StartWorker(ctx context.Context, pool *pgxpool.Pool, hub *ws.Hub) (*asynq.S
 
 	return srv, nil
 }
+

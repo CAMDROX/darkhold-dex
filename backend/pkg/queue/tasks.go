@@ -11,6 +11,7 @@ import (
 // Task Types
 const (
 	TypeTicketVerify = "ticket:verify"
+	TypeTradeSettle  = "trade:settle"
 )
 
 // TicketVerifyPayload represents the parameters needed by the verification worker
@@ -18,6 +19,15 @@ type TicketVerifyPayload struct {
 	UserID      uuid.UUID `json:"user_id"`
 	EventSymbol string    `json:"event_symbol"`
 	TicketID    string    `json:"ticket_id"`
+}
+
+// TradeSettlePayload represents the parameters needed by the settlement worker
+type TradeSettlePayload struct {
+	MakerOrderID uuid.UUID `json:"maker_order_id"`
+	TakerOrderID uuid.UUID `json:"taker_order_id"`
+	Price        float64   `json:"price"`
+	Quantity     int       `json:"quantity"`
+	EventSymbol  string    `json:"event_symbol"`
 }
 
 // NewTicketVerifyTask creates a new Asynq task for background ticket verification
@@ -39,3 +49,25 @@ func NewTicketVerifyTask(userID uuid.UUID, eventSymbol, ticketID string) (*asynq
 		asynq.MaxRetry(3),
 	), nil
 }
+
+// NewTradeSettleTask creates an Asynq task for atomic trade settlement in the 'settlements' queue
+func NewTradeSettleTask(makerOrderID, takerOrderID uuid.UUID, price float64, quantity int, eventSymbol string) (*asynq.Task, error) {
+	payload, err := json.Marshal(TradeSettlePayload{
+		MakerOrderID: makerOrderID,
+		TakerOrderID: takerOrderID,
+		Price:        price,
+		Quantity:     quantity,
+		EventSymbol:  eventSymbol,
+	})
+	if err != nil {
+		return nil, fmt.Errorf("failed to marshal trade settle payload: %w", err)
+	}
+
+	return asynq.NewTask(
+		TypeTradeSettle,
+		payload,
+		asynq.Queue("settlements"),
+		asynq.MaxRetry(5),
+	), nil
+}
+

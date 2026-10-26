@@ -209,3 +209,33 @@ export const walletApi = {
   getBalances: () => apiRequest('/api/wallet/balances'),
 }
 
+// In-Memory Matching Engine & Secondary Market Methods
+export const ordersApi = {
+  placeOrder: ({ eventSymbol, side, orderType, price, quantity, quoteCurrency = 'INR' }) =>
+    apiRequest('/api/orders', {
+      method: 'POST',
+      body: JSON.stringify({
+        event_symbol: eventSymbol,
+        side,
+        order_type: orderType,
+        price: Number(price),
+        quantity: Number(quantity),
+        quote_currency: quoteCurrency,
+      }),
+    }),
+
+  cancelOrder: (orderId) =>
+    apiRequest(`/api/orders/${orderId}`, {
+      method: 'DELETE',
+    }),
+
+  getMyOrders: () => apiRequest('/api/orders/mine'),
+
+  getOrderBook: (symbol) => apiRequest(`/api/markets/${symbol}/orderbook`),
+
+  getTrades: (symbol) => apiRequest(`/api/markets/${symbol}/trades`),
+
+  getTelemetry: () => apiRequest('/api/engine/telemetry'),
+}
+
+

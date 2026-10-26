@@ -1,6 +1,7 @@
-import React from 'react'
+import React, { useState, useEffect, useCallback } from 'react'
 import { Link } from 'react-router-dom'
 import { useAuth } from '../context/AuthContext'
+import { useWebSocket } from '../context/WebSocketContext'
 import {
   ShieldCheck,
   ShieldAlert,
@@ -11,105 +12,347 @@ import {
   Activity,
   Layers,
   Zap,
+  Plus,
+  RefreshCw,
+  Wallet,
+  Ticket,
 } from 'lucide-react'
+import { ticketsApi, walletApi, ordersApi } from '../services/api'
+import MarketHeader from '../components/trading/MarketHeader'
+import OrderEntryForm from '../components/trading/OrderEntryForm'
+import OrderBookDepth from '../components/trading/OrderBookDepth'
+import RecentTradesTape from '../components/trading/RecentTradesTape'
+import MyOrdersTable from '../components/trading/MyOrdersTable'
+import SimulatedDepositModal from '../components/SimulatedDepositModal'
+import ImportTicketModal from '../components/ImportTicketModal'
+import toast from 'react-hot-toast'
 
 export default function DashboardPage() {
   const { user } = useAuth()
+  const { subscribe } = useWebSocket()
   const kycStatus = (user?.kyc_status || 'unverified').toLowerCase()
+  const isKycVerified = kycStatus === 'verified'
+
+  // Modal States
+  const [isDepositModalOpen, setIsDepositModalOpen] = useState(false)
+  const [isImportModalOpen, setIsImportModalOpen] = useState(false)
+
+  // Market & Events State
+  const [events, setEvents] = useState([])
+  const [selectedEvent, setSelectedEvent] = useState(null)
+  const [isFetchingEvents, setIsFetchingEvents] = useState(true)
+
+  // Trading Data State
+  const [l2Data, setL2Data] = useState({ bids: [], asks: [], spread: 0, best_bid: 0, best_ask: 0 })
+  const [trades, setTrades] = useState([])
+  const [myOrders, setMyOrders] = useState([])
+  const [telemetry, setTelemetry] = useState(null)
+  const [externalPrice, setExternalPrice] = useState(null)
+
+  // User Balances State
+  const [availableFiat, setAvailableFiat] = useState(0)
+  const [availableRelics, setAvailableRelics] = useState(0)
+
+  // 1. Fetch Active Events
+  const fetchEvents = useCallback(async () => {
+    setIsFetchingEvents(true)
+    try {
+      const data = await ticketsApi.getEvents()
+      const list = Array.isArray(data) ? data : data?.events || []
+      setEvents(list)
+      if (list.length > 0) {
+        setSelectedEvent((prev) => {
+          if (prev) {
+            return list.find((e) => e.symbol === prev.symbol) || list[0]
+          }
+          return list.find((e) => e.symbol === 'WEBSTER_26') || list[0]
+        })
+      }
+    } catch (err) {
+      console.error('[Dashboard] Error fetching events:', err)
+    } finally {
+      setIsFetchingEvents(false)
+    }
+  }, [])
+
+  // 2. Fetch User Balances & Inventory
+  const fetchUserBalances = useCallback(async () => {
+    try {
+      const resp = await walletApi.getBalances()
+      if (resp && resp.balances) {
+        const inrItem = resp.balances.find((b) => b.currency === 'INR' && b.account_type === 'AVAILABLE')
+        setAvailableFiat(inrItem ? inrItem.balance : 0)
+      }
+    } catch (err) {
+      console.error('[Dashboard] Error fetching balances:', err)
+    }
+  }, [])
+
+  const fetchUserRelics = useCallback(async () => {
+    if (!selectedEvent) return
+    try {
+      const resp = await ticketsApi.getMyRelics()
+      if (resp && resp.relics) {
+        const matchingRelics = resp.relics.filter(
+          (r) => r.event_symbol === selectedEvent.symbol && r.status === 'AVAILABLE'
+        )
+        setAvailableRelics(matchingRelics.length)
+      }
+    } catch (err) {
+      console.error('[Dashboard] Error fetching relics:', err)
+    }
+  }, [selectedEvent])
+
+  // 3. Fetch L2 Order Book Depth
+  const fetchOrderBook = useCallback(async () => {
+    if (!selectedEvent) return
+    try {
+      const depth = await ordersApi.getOrderBook(selectedEvent.symbol)
+      if (depth) {
+        setL2Data(depth)
+      }
+    } catch (err) {
+      console.error('[Dashboard] Error fetching order book:', err)
+    }
+  }, [selectedEvent])
+
+  // 4. Fetch Recent Market Trades
+  const fetchMarketTrades = useCallback(async () => {
+    if (!selectedEvent) return
+    try {
+      const resp = await ordersApi.getTrades(selectedEvent.symbol)
+      if (resp && resp.trades) {
+        setTrades(resp.trades)
+      }
+    } catch (err) {
+      console.error('[Dashboard] Error fetching trades:', err)
+    }
+  }, [selectedEvent])
+
+  // 5. Fetch User's Orders
+  const fetchMyOrders = useCallback(async () => {
+    try {
+      const resp = await ordersApi.getMyOrders()
+      if (resp && resp.orders) {
+        setMyOrders(resp.orders)
+      }
+    } catch (err) {
+      console.error('[Dashboard] Error fetching my orders:', err)
+    }
+  }, [])
+
+  // 6. Fetch Telemetry
+  const fetchTelemetry = useCallback(async () => {
+    try {
+      const tel = await ordersApi.getTelemetry()
+      if (tel) {
+        setTelemetry(tel)
+      }
+    } catch (err) {
+      // quiet fail
+    }
+  }, [])
+
+  // Initial Load
+  useEffect(() => {
+    fetchEvents()
+    fetchUserBalances()
+    fetchMyOrders()
+    fetchTelemetry()
+  }, [fetchEvents, fetchUserBalances, fetchMyOrders, fetchTelemetry])
+
+  // On Selected Event Change: reload book & trades & inventory
+  useEffect(() => {
+    if (selectedEvent) {
+      fetchOrderBook()
+      fetchMarketTrades()
+      fetchUserRelics()
+    }
+  }, [selectedEvent, fetchOrderBook, fetchMarketTrades, fetchUserRelics])
+
+  // 7. Real-Time WebSocket Listeners
+  useEffect(() => {
+    // A: Real-Time Level 2 Order Book Depth Stream
+    const handleOrderBookUpdate = (data) => {
+      if (selectedEvent && data?.event_symbol === selectedEvent.symbol) {
+        setL2Data(data)
+      }
+    }
+
+    // B: Real-Time Trade Execution Stream
+    const handleTradeExecuted = (data) => {
+      if (selectedEvent && data?.event_symbol === selectedEvent.symbol) {
+        setTrades((prev) => [data, ...prev.slice(0, 49)])
+        // Refresh balances, inventory, and my orders when a trade matches
+        fetchUserBalances()
+        fetchUserRelics()
+        fetchMyOrders()
+      }
+    }
+
+    // C: Wallet Deposit Confirmation
+    const handleDepositSuccess = () => {
+      fetchUserBalances()
+    }
+
+    // D: Relic Ingestion Confirmation
+    const handleImportSuccess = () => {
+      fetchUserRelics()
+    }
+
+    const unsubDepth = subscribe('ORDERBOOK_DEPTH_UPDATE', handleOrderBookUpdate)
+    const unsubTrade = subscribe('TRADE_EXECUTED', handleTradeExecuted)
+    const unsubDeposit = subscribe('DEPOSIT_SUCCESS', handleDepositSuccess)
+    const unsubImport = subscribe('IMPORT_SUCCESS', handleImportSuccess)
+
+    return () => {
+      unsubDepth?.()
+      unsubTrade?.()
+      unsubDeposit?.()
+      unsubImport?.()
+    }
+  }, [subscribe, selectedEvent, fetchUserBalances, fetchUserRelics, fetchMyOrders])
+
+  // Callbacks after user places or cancels order
+  const handleOrderPlaced = () => {
+    fetchOrderBook()
+    fetchMyOrders()
+    fetchUserBalances()
+    fetchUserRelics()
+  }
+
+  const handleOrderCancelled = () => {
+    fetchOrderBook()
+    fetchMyOrders()
+    fetchUserBalances()
+    fetchUserRelics()
+  }
 
   return (
-    <div className="min-h-[85vh] py-12 px-4 sm:px-6 lg:px-8 max-w-7xl mx-auto space-y-8 animate-fade-in">
-      {/* Welcome Banner (Clean, without the clutter of action buttons) */}
-      <div className="relative rounded-2xl gloss-panel p-6 sm:p-8 border border-[#D4AF37]/30 overflow-hidden shadow-[0_10px_35px_rgba(0,0,0,0.7)]">
+    <div className="min-h-[85vh] py-8 px-4 sm:px-6 lg:px-8 max-w-7xl mx-auto space-y-6 animate-fade-in">
+      {/* 1. Welcome Banner & Trader Status Header */}
+      <div className="relative rounded-2xl gloss-panel p-5 sm:p-6 border border-[#D4AF37]/30 overflow-hidden shadow-[0_10px_35px_rgba(0,0,0,0.7)]">
         <div className="absolute right-0 top-0 bottom-0 w-1/3 bg-gradient-to-l from-[#D4AF37]/10 to-transparent pointer-events-none" />
 
         <div className="relative z-10 flex flex-wrap items-center justify-between gap-4">
           <div>
-            <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-[#181412] border border-[#22C55E]/30 text-xs font-mono text-[#22C55E] mb-3">
+            <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-[#181412] border border-[#22C55E]/30 text-xs font-mono text-[#22C55E] mb-2">
               <span className="w-2 h-2 rounded-full bg-[#22C55E] animate-pulse" />
-              <span>AUTHENTICATED TRADER // SESSION ACTIVE</span>
+              <span>IN-MEMORY MATCHING TERMINAL // SUB-10MS SLA</span>
             </div>
-            <h1 className="font-cinzel font-black text-3xl sm:text-4xl text-white">
-              Welcome,{' '}
+            <h1 className="font-cinzel font-black text-2xl sm:text-3xl text-white">
+              Secondary Exchange —{' '}
               <span className="text-transparent bg-clip-text bg-gradient-to-r from-[#D4AF37] to-[#F5D061]">
-                {user?.username}
+                {selectedEvent?.name || 'Festival Market'}
               </span>
             </h1>
-            <p className="text-sm font-mono text-[#9E9689] mt-1">
-              {user?.email} · Account ID:{' '}
-              <span className="text-[#E0DBD2]">{user?.id?.slice(0, 8)}...</span>
+            <p className="text-xs font-mono text-[#9E9689] mt-1">
+              Signed in as <strong className="text-white">{user?.username}</strong> · Available Fiat:{' '}
+              <span className="text-[#22C55E] font-bold">₹{availableFiat.toLocaleString()}</span> · Vault Inventory:{' '}
+              <span className="text-[#F5D061] font-bold">{availableRelics} pass(es)</span>
             </p>
           </div>
 
           <div className="flex items-center gap-2">
-            <Link
-              to="/assets"
-              className="px-4 py-2 rounded-xl font-mono text-xs uppercase tracking-wider font-semibold text-[#D4AF37] bg-[#14100E] border border-[#D4AF37]/40 hover:bg-[#1C1613] hover:border-[#D4AF37] transition-all flex items-center gap-2"
+            <button
+              type="button"
+              onClick={() => setIsDepositModalOpen(true)}
+              className="px-3.5 py-2 rounded-xl font-mono text-xs uppercase tracking-wider font-semibold text-[#D4AF37] bg-[#14100E] border border-[#D4AF37]/40 hover:bg-[#1C1613] hover:border-[#D4AF37] transition-all flex items-center gap-1.5 cursor-pointer shadow-md"
             >
               <Coins className="w-3.5 h-3.5 text-[#F5D061]" />
-              <span>Go to Assets Vault</span>
-              <ArrowRight className="w-3.5 h-3.5 text-[#D4AF37]" />
+              <span>Deposit INR</span>
+            </button>
+
+            <button
+              type="button"
+              onClick={() => setIsImportModalOpen(true)}
+              className="px-3.5 py-2 rounded-xl font-mono text-xs uppercase tracking-wider font-semibold text-white bg-[#14100E] border border-[#2A211B] hover:border-[#D4AF37] transition-all flex items-center gap-1.5 cursor-pointer shadow-md"
+            >
+              <Ticket className="w-3.5 h-3.5 text-[#D4AF37]" />
+              <span>Import Ticket</span>
+            </button>
+
+            <Link
+              to="/assets"
+              className="px-3.5 py-2 rounded-xl font-mono text-xs uppercase tracking-wider font-semibold text-[#8E867A] hover:text-white bg-[#14100E] border border-[#2A211B] hover:border-[#D4AF37]/50 transition-all flex items-center gap-1.5"
+            >
+              <span>Vault</span>
+              <ArrowRight className="w-3.5 h-3.5" />
             </Link>
           </div>
         </div>
       </div>
 
-      {/* Main Workspace Terminal & Engine Telemetry */}
-      <div className="rounded-2xl gloss-panel p-8 sm:p-12 border border-[#2A231F] text-center space-y-6">
-        <div className="max-w-2xl mx-auto space-y-4">
-          <div className="w-16 h-16 rounded-2xl bg-[#14100E] border border-[#D4AF37]/40 mx-auto flex items-center justify-center text-[#F5D061] shadow-[0_0_25px_rgba(212,175,55,0.2)]">
-            <Cpu className="w-8 h-8" />
-          </div>
+      {/* 2. Market Selector & Anti-Scalp Collar Specs */}
+      <MarketHeader
+        events={events}
+        selectedEvent={selectedEvent}
+        onSelectEvent={(evt) => setSelectedEvent(evt)}
+        spread={l2Data?.spread || 0}
+        bestBid={l2Data?.best_bid || 0}
+        bestAsk={l2Data?.best_ask || 0}
+        telemetry={telemetry}
+      />
 
-          <h2 className="font-cinzel font-bold text-2xl text-white">
-            Matching Terminal & Infrastructure
-          </h2>
+      {/* 3. Main Trading Terminal Grid (3 Columns) */}
+      <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
+        {/* Left Column (4 cols): Order Placement Form */}
+        <div className="lg:col-span-4">
+          <OrderEntryForm
+            selectedEvent={selectedEvent}
+            isKycVerified={isKycVerified}
+            availableFiat={availableFiat}
+            availableRelics={availableRelics}
+            onOrderPlaced={handleOrderPlaced}
+            onOpenDepositModal={() => setIsDepositModalOpen(true)}
+            onOpenImportModal={() => setIsImportModalOpen(true)}
+            externalPrice={externalPrice}
+          />
+        </div>
 
-          <p className="text-sm font-mono text-[#A8A195] leading-relaxed">
-            Darkhold Exchange combines lock-free Go FIFO matching, Asynq background ticket ingestion, and Supabase double-entry balance accounting with sub-10ms latency SLAs.
-          </p>
+        {/* Center Column (5 cols): Level-2 Order Book Depth Ladder */}
+        <div className="lg:col-span-5">
+          <OrderBookDepth
+            l2Data={l2Data}
+            isLoading={false}
+            onSelectPrice={(price) => setExternalPrice(price)}
+          />
+        </div>
 
-          <div className="grid grid-cols-1 sm:grid-cols-4 gap-4 pt-6 text-left font-mono text-xs">
-            <div className="p-4 rounded-xl bg-[#0D0B0A] border border-[#241E19]">
-              <span className="text-[#8E867A] block mb-1">EMAIL STATUS</span>
-              <span className="text-[#22C55E] font-bold flex items-center gap-1.5">
-                <ShieldCheck className="w-3.5 h-3.5" /> Verified
-              </span>
-            </div>
-
-            <div className="p-4 rounded-xl bg-[#0D0B0A] border border-[#241E19]">
-              <span className="text-[#8E867A] block mb-1">IDENTITY STATUS</span>
-              {kycStatus === 'verified' ? (
-                <span className="text-[#22C55E] font-bold flex items-center gap-1.5">
-                  <ShieldCheck className="w-3.5 h-3.5" /> Verified
-                </span>
-              ) : kycStatus === 'pending' ? (
-                <span className="text-[#F5D061] font-bold flex items-center gap-1.5">
-                  <Clock className="w-3.5 h-3.5" /> Pending Review
-                </span>
-              ) : (
-                <span className="text-[#FB923C] font-bold flex items-center gap-1.5">
-                  <ShieldAlert className="w-3.5 h-3.5" /> Unverified
-                </span>
-              )}
-            </div>
-
-            <div className="p-4 rounded-xl bg-[#0D0B0A] border border-[#241E19]">
-              <span className="text-[#8E867A] block mb-1">TASK QUEUE</span>
-              <span className="text-[#22C55E] font-bold flex items-center gap-1.5">
-                <Cpu className="w-3.5 h-3.5" /> Redis Asynq
-              </span>
-            </div>
-
-            <div className="p-4 rounded-xl bg-[#0D0B0A] border border-[#241E19]">
-              <span className="text-[#8E867A] block mb-1">ENGINE ACCESS</span>
-              <span className="text-white font-bold flex items-center gap-1.5">
-                <Zap className="w-3.5 h-3.5 text-[#F5D061]" /> Sub-10ms FIFO
-              </span>
-            </div>
-          </div>
+        {/* Right Column (3 cols): Recent Executed Trades Tape */}
+        <div className="lg:col-span-3">
+          <RecentTradesTape
+            trades={trades}
+            isLoading={false}
+          />
         </div>
       </div>
+
+      {/* 4. Bottom Section: Trader Active Orders & Historical Escrow Positions */}
+      <MyOrdersTable
+        orders={myOrders}
+        isLoading={false}
+        onOrderCancelled={handleOrderCancelled}
+        onRefresh={fetchMyOrders}
+      />
+
+      {/* 5. Modals */}
+      <SimulatedDepositModal
+        isOpen={isDepositModalOpen}
+        onClose={() => setIsDepositModalOpen(false)}
+        onSuccess={() => {
+          fetchUserBalances()
+          setIsDepositModalOpen(false)
+        }}
+      />
+
+      <ImportTicketModal
+        isOpen={isImportModalOpen}
+        onClose={() => setIsImportModalOpen(false)}
+        onTicketQueued={() => {
+          setIsImportModalOpen(false)
+        }}
+      />
     </div>
   )
 }

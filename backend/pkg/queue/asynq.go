@@ -218,9 +218,10 @@ func NewServer() *asynq.Server {
 		asynq.Config{
 			Concurrency: concurrency,
 			Queues: map[string]int{
-				"critical": 6,
-				"default":  3,
-				"low":      1,
+				"settlements": 8,
+				"critical":    6,
+				"default":     3,
+				"low":         1,
 			},
 			ErrorHandler: asynq.ErrorHandlerFunc(func(ctx context.Context, task *asynq.Task, err error) {
 				log.Printf("❌ [Asynq Worker] Task failed! Type=%s Payload=%s Error=%v",
