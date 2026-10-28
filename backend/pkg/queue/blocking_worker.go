@@ -79,7 +79,7 @@ func EnqueueTicketVerify(ctx context.Context, userID uuid.UUID, eventSymbol, tic
 }
 
 // EnqueueTradeSettle pushes an atomic trade settlement task to QueueSettlements via LPUSH (instant wake-up for BLMOVE)
-func EnqueueTradeSettle(ctx context.Context, makerOrderID, takerOrderID uuid.UUID, price float64, quantity int, eventSymbol string) (string, error) {
+func EnqueueTradeSettle(ctx context.Context, makerOrderID, takerOrderID uuid.UUID, price int64, quantity int, eventSymbol string) (string, error) {
 	rdb := GetRedisUniversalClient()
 	if rdb == nil {
 		return "", errors.New("redis client unavailable")

@@ -19,7 +19,7 @@ var (
 )
 
 // settleAuctionInDB executes the direct atomic double-entry ledger swap and cryptographic QR rotation
-func (e *AuctionEngine) settleAuctionInDB(ctx context.Context, auc *LiveAuction, buyerID uuid.UUID, clearingPrice float64, now time.Time) error {
+func (e *AuctionEngine) settleAuctionInDB(ctx context.Context, auc *LiveAuction, buyerID uuid.UUID, clearingPrice int64, now time.Time) error {
 	if e.pool == nil {
 		return errors.New("database pool unavailable")
 	}
@@ -42,7 +42,7 @@ func (e *AuctionEngine) settleAuctionInDB(ctx context.Context, auc *LiveAuction,
 		return fmt.Errorf("%w: user has no active %s account", ErrInsufficientFiat, quoteCurrency)
 	}
 
-	var buyerAvailableBalance float64
+	var buyerAvailableBalance int64
 	err = tx.QueryRow(ctx, `
 		SELECT COALESCE(SUM(amount), 0) FROM public.ledger_entries WHERE account_id = $1
 	`, buyerAvailAccountID).Scan(&buyerAvailableBalance)
@@ -51,7 +51,7 @@ func (e *AuctionEngine) settleAuctionInDB(ctx context.Context, auc *LiveAuction,
 	}
 
 	if buyerAvailableBalance < clearingPrice {
-		return fmt.Errorf("%w: required ₹%.2f, available ₹%.2f", ErrInsufficientFiat, clearingPrice, buyerAvailableBalance)
+		return fmt.Errorf("%w: required ₹%d, available ₹%d", ErrInsufficientFiat, clearingPrice, buyerAvailableBalance)
 	}
 
 	// 2. Fetch Event ID and external ticket ID from relic_inventory (with row lock)
@@ -140,8 +140,8 @@ func (e *AuctionEngine) settleAuctionInDB(ctx context.Context, auc *LiveAuction,
 	_, err = tx.Exec(ctx, `
 		INSERT INTO public.ledger_entries (transaction_id, account_id, amount)
 		VALUES 
-			($1, $2, -1.0),
-			($1, $3, 1.0);
+			($1, $2, -1),
+			($1, $3, 1);
 	`, txnID, sellerTicketEscrowAccountID, buyerTicketAvailAccountID)
 	if err != nil {
 		return fmt.Errorf("failed to write ticket ledger entries: %w", err)
@@ -152,7 +152,7 @@ func (e *AuctionEngine) settleAuctionInDB(ctx context.Context, auc *LiveAuction,
 		return fmt.Errorf("failed to commit settlement: %w", err)
 	}
 
-	log.Printf("🎉 [Dutch Auction Settled] Auction %s settled at ₹%.2f! Buyer: %s -> Seller: %s. QR rotated successfully.",
+	log.Printf("🎉 [Dutch Auction Settled] Auction %s settled at ₹%d! Buyer: %s -> Seller: %s. QR rotated successfully.",
 		auc.ID, clearingPrice, buyerID, auc.SellerID)
 
 	return nil

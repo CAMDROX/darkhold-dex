@@ -277,7 +277,7 @@ export default function AssetsPage() {
               <div className="flex items-baseline gap-1.5">
                 <span className="font-mono text-xs text-[#F5D061]">₹</span>
                 <span className="font-mono font-black text-3xl sm:text-4xl text-white tracking-tight">
-                  {inrBalance.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                  {Math.round(inrBalance).toLocaleString('en-IN')}
                 </span>
                 <span className="text-xs font-mono text-[#8E867A] ml-1">INR</span>
               </div>
@@ -321,7 +321,7 @@ export default function AssetsPage() {
               <div className="flex items-baseline gap-1.5">
                 <span className="font-mono text-xs text-[#60A5FA]">$</span>
                 <span className="font-mono font-black text-3xl sm:text-4xl text-white tracking-tight">
-                  {usdBalance.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                  {Math.round(usdBalance).toLocaleString('en-US')}
                 </span>
                 <span className="text-xs font-mono text-[#8E867A] ml-1">USD</span>
               </div>

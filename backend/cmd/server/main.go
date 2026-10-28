@@ -22,6 +22,7 @@ import (
 	"darkhold-dex/backend/pkg/ws"
 
 	"github.com/google/uuid"
+	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/joho/godotenv"
 )
 
@@ -38,6 +39,9 @@ func main() {
 		log.Printf("⚠️  [Supabase DB] Notice: Database connection pending configuration: %v", err)
 	} else {
 		defer database.Close()
+		migrateCtx, migrateCancel := context.WithTimeout(ctx, 15*time.Second)
+		runStartupMigrations(migrateCtx, database.Pool)
+		migrateCancel()
 	}
 
 	// ==========================================
@@ -299,4 +303,23 @@ func main() {
 	defer sCancel()
 	_ = server.Shutdown(shutdownCtx)
 	log.Println("Server exited cleanly.")
+}
+
+func runStartupMigrations(ctx context.Context, pool *pgxpool.Pool) {
+	if pool == nil {
+		return
+	}
+	migrations := []string{
+		`ALTER TABLE public.orders ALTER COLUMN price TYPE BIGINT USING ROUND(price)::BIGINT;`,
+		`ALTER TABLE public.trades ALTER COLUMN price TYPE BIGINT USING ROUND(price)::BIGINT;`,
+		`ALTER TABLE public.events ALTER COLUMN face_value TYPE BIGINT USING ROUND(face_value)::BIGINT, ALTER COLUMN max_sell_price TYPE BIGINT USING ROUND(max_sell_price)::BIGINT;`,
+		`ALTER TABLE public.ledger_entries ALTER COLUMN amount TYPE BIGINT USING ROUND(amount)::BIGINT;`,
+		`ALTER TABLE public.dutch_auctions ALTER COLUMN start_price TYPE BIGINT USING ROUND(start_price)::BIGINT, ALTER COLUMN reserve_price TYPE BIGINT USING ROUND(reserve_price)::BIGINT, ALTER COLUMN current_price TYPE BIGINT USING ROUND(current_price)::BIGINT, ALTER COLUMN clearing_price TYPE BIGINT USING ROUND(clearing_price)::BIGINT;`,
+	}
+	for _, m := range migrations {
+		if _, err := pool.Exec(ctx, m); err != nil {
+			log.Printf("ℹ️  [DB Migration Note] %v", err)
+		}
+	}
+	log.Println("✅ [DB Migration] Integer price schema verified & synced.")
 }

@@ -270,8 +270,8 @@ type EventSummary struct {
 	Name         string    `json:"name"`
 	Symbol       string    `json:"symbol"`
 	EventDate    time.Time `json:"event_date,omitempty"`
-	FaceValue    float64   `json:"face_value,omitempty"`
-	MaxSellPrice float64   `json:"max_sell_price,omitempty"`
+	FaceValue    int64     `json:"face_value,omitempty"`
+	MaxSellPrice int64     `json:"max_sell_price,omitempty"`
 }
 
 // ListEvents handles GET /api/events
@@ -327,10 +327,10 @@ func autoSeedEvents(ctx context.Context) []EventSummary {
 	_, _ = db.GlobalDB.Pool.Exec(ctx, `
 		INSERT INTO public.events (name, symbol, event_date, face_value, max_markup_percentage, max_sell_price, external_platform, status)
 		VALUES 
-			('Webster Hall — Arcane Night 2026', 'WEBSTER_26', NOW() + INTERVAL '45 days', 120.00, 0.25, 150.00, 'SIMULATED', 'ACTIVE'),
-			('Tomorrowland — Book of Vishanti 2026', 'TOMORROW_26', NOW() + INTERVAL '90 days', 350.00, 0.20, 420.00, 'SIMULATED', 'ACTIVE'),
-			('Coachella — Mirage Sanctuary 2026', 'COACHELLA_26', NOW() + INTERVAL '60 days', 450.00, 0.15, 517.50, 'SIMULATED', 'ACTIVE'),
-			('Ultra Miami — Resistance Matrix 2026', 'ULTRA_26', NOW() + INTERVAL '120 days', 280.00, 0.25, 350.00, 'SIMULATED', 'ACTIVE')
+			('Webster Hall — Arcane Night 2026', 'WEBSTER_26', NOW() + INTERVAL '45 days', 120, 0.25, 150, 'SIMULATED', 'ACTIVE'),
+			('Tomorrowland — Book of Vishanti 2026', 'TOMORROW_26', NOW() + INTERVAL '90 days', 350, 0.20, 420, 'SIMULATED', 'ACTIVE'),
+			('Coachella — Mirage Sanctuary 2026', 'COACHELLA_26', NOW() + INTERVAL '60 days', 450, 0.15, 518, 'SIMULATED', 'ACTIVE'),
+			('Ultra Miami — Resistance Matrix 2026', 'ULTRA_26', NOW() + INTERVAL '120 days', 280, 0.25, 350, 'SIMULATED', 'ACTIVE')
 		ON CONFLICT (symbol) DO NOTHING;
 	`)
 

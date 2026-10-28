@@ -190,28 +190,28 @@ export default function HeroPreviewWidget() {
           <div className="p-3.5 sm:p-4">
             <span className="text-[10px] font-mono tracking-wider text-[#8E867A] block mb-1">BEST BID</span>
             <span className="text-lg sm:text-xl font-mono font-bold text-[#22C55E]">
-              ₹{bestBid.toLocaleString()}.00
+              ₹{bestBid.toLocaleString()}
             </span>
           </div>
 
           <div className="p-3.5 sm:p-4">
             <span className="text-[10px] font-mono tracking-wider text-[#8E867A] block mb-1">BEST ASK</span>
             <span className="text-lg sm:text-xl font-mono font-bold text-[#EF4444]">
-              ₹{bestAsk.toLocaleString()}.00
+              ₹{bestAsk.toLocaleString()}
             </span>
           </div>
 
           <div className="p-3.5 sm:p-4">
             <span className="text-[10px] font-mono tracking-wider text-[#8E867A] block mb-1">SPREAD</span>
             <span className="text-lg sm:text-xl font-mono font-bold text-[#F5D061]">
-              ₹{spread.toLocaleString()}.00
+              ₹{spread.toLocaleString()}
             </span>
           </div>
 
           <div className="p-3.5 sm:p-4">
             <span className="text-[10px] font-mono tracking-wider text-[#8E867A] block mb-1">LAST TRADE</span>
             <span className="text-lg sm:text-xl font-mono font-bold text-white">
-              ₹2,300.00
+              ₹2,300
             </span>
             <span className="text-[10px] font-mono text-[#8E867A] block">₹0.00</span>
           </div>
@@ -337,7 +337,7 @@ export default function HeroPreviewWidget() {
                       <tr key={t.id} className="hover:bg-[#1C1714]/40">
                         <td className="py-1.5 text-[#7A7367]">{t.id}</td>
                         <td className="py-1.5 text-[#9B9487]">{t.time}</td>
-                        <td className="py-1.5 text-[#22C55E] font-semibold">₹{t.price.toLocaleString()}.00</td>
+                        <td className="py-1.5 text-[#22C55E] font-semibold">₹{t.price.toLocaleString()}</td>
                         <td className="py-1.5 text-white">{t.qty}</td>
                         <td className="py-1.5 text-[#D1C9BE]">{t.buyer}</td>
                         <td className="py-1.5 text-[#9B9487]">{t.seller}</td>

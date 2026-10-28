@@ -33,9 +33,9 @@ type LiveAuction struct {
 	RelicID         uuid.UUID
 	EventSymbol     string
 	EventName       string
-	StartPrice      float64
-	ReservePrice    float64
-	CurrentPrice    float64
+	StartPrice      int64
+	ReservePrice    int64
+	CurrentPrice    int64
 	DurationSeconds int
 	StartedAt       time.Time
 	Status          models.AuctionStatus
@@ -43,7 +43,7 @@ type LiveAuction struct {
 
 // CalculatePrice applies the linear decay formula:
 // P(t) = max(P_reserve, P_start - ((P_start - P_reserve) / T_total) * t)
-func CalculatePrice(startPrice, reservePrice float64, durationSec int, elapsedSec float64) float64 {
+func CalculatePrice(startPrice, reservePrice int64, durationSec int, elapsedSec float64) int64 {
 	if elapsedSec <= 0 {
 		return startPrice
 	}
@@ -51,15 +51,14 @@ func CalculatePrice(startPrice, reservePrice float64, durationSec int, elapsedSe
 		return reservePrice
 	}
 
-	decayRate := (startPrice - reservePrice) / float64(durationSec)
-	decayed := startPrice - (decayRate * elapsedSec)
+	decayRate := float64(startPrice-reservePrice) / float64(durationSec)
+	decayed := float64(startPrice) - (decayRate * elapsedSec)
 
-	if decayed < reservePrice {
+	res := int64(math.Round(decayed))
+	if res < reservePrice {
 		return reservePrice
 	}
-
-	// Round to 2 decimal places (cents)
-	return math.Round(decayed*100.0) / 100.0
+	return res
 }
 
 // AuctionEngine manages real-time Dutch auction price decay, in-memory atomic snipes, and settlement handoffs
@@ -98,7 +97,7 @@ func (e *AuctionEngine) RegisterAuction(auc *models.DutchAuction) {
 		Status:          models.AuctionStatusActive,
 	}
 
-	log.Printf("⏳ [Dutch Auction Engine] Registered auction %s for %s (Start: ₹%.2f -> Floor: ₹%.2f, Duration: %ds)",
+	log.Printf("⏳ [Dutch Auction Engine] Registered auction %s for %s (Start: ₹%d -> Floor: ₹%d, Duration: %ds)",
 		auc.ID, auc.EventSymbol, auc.StartPrice, auc.ReservePrice, auc.DurationSeconds)
 }
 
@@ -259,7 +258,7 @@ func (e *AuctionEngine) handleAuctionExpiry(ctx context.Context, auc *LiveAuctio
 }
 
 // SnipeAuction executes an atomic in-memory claim and routes directly to double-entry settlement
-func (e *AuctionEngine) SnipeAuction(ctx context.Context, auctionID, buyerID uuid.UUID) (*models.DutchAuction, float64, error) {
+func (e *AuctionEngine) SnipeAuction(ctx context.Context, auctionID, buyerID uuid.UUID) (*models.DutchAuction, int64, error) {
 	e.mu.Lock()
 	auc, exists := e.auctions[auctionID]
 	if !exists {
@@ -418,7 +417,7 @@ func (e *AuctionEngine) HydrateFromDB(ctx context.Context) error {
 	for rows.Next() {
 		var id, sellerID, relicID uuid.UUID
 		var symbol, username, eventName string
-		var startPrice, reservePrice float64
+		var startPrice, reservePrice int64
 		var durationSec int
 		var startedAt time.Time
 

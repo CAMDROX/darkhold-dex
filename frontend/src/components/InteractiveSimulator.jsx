@@ -412,7 +412,7 @@ export default function InteractiveSimulator() {
                   </span>
                   
                   <div className="text-4xl sm:text-6xl font-mono font-black text-transparent bg-clip-text bg-gradient-to-r from-[#FFF] via-[#F5D061] to-[#D4AF37] my-4">
-                    ₹{currentAuctionPrice.toLocaleString()}.00
+                    ₹{currentAuctionPrice.toLocaleString()}
                   </div>
 
                   <div className="flex justify-center gap-6 text-xs font-mono text-[#8E867A] mb-8">
