@@ -98,6 +98,19 @@ func main() {
 		}()
 	}
 
+	// ==========================================
+	// Initialize Background Settlement Worker (Embedded Mode)
+	// ==========================================
+	if database != nil && database.Pool != nil {
+		blockingServer := queue.NewBlockingWorkerServer(database.Pool, wsHub, 0)
+		if err := blockingServer.Start(ctx); err != nil {
+			log.Printf("⚠️  [Worker Init] Failed to start embedded worker: %v", err)
+		} else {
+			log.Println("⚡ [Embedded Worker] Started background settlement worker within server process.")
+			defer blockingServer.Shutdown()
+		}
+	}
+
 	mux := http.NewServeMux()
 
 	// ==========================================
