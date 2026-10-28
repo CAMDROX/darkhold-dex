@@ -3,7 +3,7 @@ package engine
 import (
 	"errors"
 	"fmt"
-	"os"
+	"math"
 	"sync"
 	"time"
 
@@ -19,62 +19,170 @@ var (
 	ErrInsufficientLiquidity = errors.New("insufficient liquidity to fulfill market order")
 )
 
-// isSelfTradePrevented determines if an order should be prevented from matching against itself (wash-trading guard).
-// In production, self-trading is blocked by default.
-// In development, self-trading is allowed so single-user testing can execute trades immediately,
-// unless PREVENT_SELF_TRADE=true is explicitly set.
-func isSelfTradePrevented(u1, u2 uuid.UUID) bool {
-	if u1 != u2 {
-		return false
-	}
-	if os.Getenv("PREVENT_SELF_TRADE") == "true" {
-		return true
-	}
-	if os.Getenv("ALLOW_SELF_MATCH") == "true" {
-		return false
-	}
-	if os.Getenv("ENVIRONMENT") == "development" {
-		return false
-	}
-	return true
+// ToPriceCents converts float64 price to int64 cents to eliminate floating-point drift
+func ToPriceCents(price float64) int64 {
+	return int64(math.Round(price * 100.0))
 }
 
-// PriceLevel holds a queue of orders resting at a single price
+// FromPriceCents converts int64 cents back to float64
+func FromPriceCents(cents int64) float64 {
+	return float64(cents) / 100.0
+}
+
+// isSelfTradePrevented determines if an order should be prevented from matching against itself (wash-trading guard).
+// Strict enforcement: A user can NEVER match against their own resting order under any environment.
+func isSelfTradePrevented(u1, u2 uuid.UUID) bool {
+	return u1 == u2
+}
+
+// OrderNode represents an intrusive doubly-linked list node wrapping an Order.
+// Enables O(1) insertion, O(1) deletion from anywhere in the list, and O(1) queue popping.
+type OrderNode struct {
+	Order      *models.Order
+	PriceCents int64
+	Level      *PriceLevel
+	Prev       *OrderNode
+	Next       *OrderNode
+}
+
+// OrderQueue manages a strict FIFO queue of orders at a specific price level.
+type OrderQueue struct {
+	Head          *OrderNode
+	Tail          *OrderNode
+	TotalQuantity int
+	Len           int
+}
+
+// Append inserts an order at the tail of the queue in O(1)
+func (q *OrderQueue) Append(node *OrderNode) {
+	node.Prev = q.Tail
+	node.Next = nil
+	if q.Tail != nil {
+		q.Tail.Next = node
+	} else {
+		q.Head = node
+	}
+	q.Tail = node
+	q.TotalQuantity += node.Order.UnfilledQuantity()
+	q.Len++
+}
+
+// Remove unlinks an arbitrary node from the queue in O(1)
+func (q *OrderQueue) Remove(node *OrderNode) {
+	if node.Prev != nil {
+		node.Prev.Next = node.Next
+	} else {
+		q.Head = node.Next
+	}
+	if node.Next != nil {
+		node.Next.Prev = node.Prev
+	} else {
+		q.Tail = node.Prev
+	}
+	q.TotalQuantity -= node.Order.UnfilledQuantity()
+	q.Len--
+	node.Prev = nil
+	node.Next = nil
+}
+
+// PopHead removes and returns the head node (oldest FIFO order) in O(1)
+func (q *OrderQueue) PopHead() *OrderNode {
+	if q.Head == nil {
+		return nil
+	}
+	node := q.Head
+	q.Remove(node)
+	return node
+}
+
+// PriceLevel holds an O(1) intrusive FIFO queue of resting orders at an exact price tier
 type PriceLevel struct {
-	Price  float64
-	Orders []*models.Order
+	PriceCents int64
+	Price      float64
+	Queue      *OrderQueue
 }
 
 func (pl *PriceLevel) TotalQuantity() int {
-	total := 0
-	for _, o := range pl.Orders {
-		total += o.UnfilledQuantity()
+	if pl.Queue == nil {
+		return 0
 	}
-	return total
+	return pl.Queue.TotalQuantity
 }
 
 func (pl *PriceLevel) OrderCount() int {
-	return len(pl.Orders)
+	if pl.Queue == nil {
+		return 0
+	}
+	return pl.Queue.Len
 }
 
-// OrderBook represents an isolated in-memory FIFO order book for a single event trading pair
+// Memory Pools for Zero-Allocation Steady-State Execution
+var orderNodePool = sync.Pool{
+	New: func() any {
+		return new(OrderNode)
+	},
+}
+
+var tradePool = sync.Pool{
+	New: func() any {
+		return new(models.Trade)
+	},
+}
+
+func acquireOrderNode(order *models.Order, cents int64, level *PriceLevel) *OrderNode {
+	node := orderNodePool.Get().(*OrderNode)
+	node.Order = order
+	node.PriceCents = cents
+	node.Level = level
+	node.Prev = nil
+	node.Next = nil
+	return node
+}
+
+func releaseOrderNode(node *OrderNode) {
+	node.Order = nil
+	node.Level = nil
+	node.Prev = nil
+	node.Next = nil
+	orderNodePool.Put(node)
+}
+
+func acquireTrade() *models.Trade {
+	return tradePool.Get().(*models.Trade)
+}
+
+// OrderBook represents a high-frequency in-memory FIFO order book.
+// Uses an intrusive Doubly-Linked List + Hash Map + Red-Black Tree architecture:
+// - Order Queues: O(1) enqueue, O(1) dequeue, O(1) arbitrary order cancellation
+// - Price Levels: O(1) direct map lookup + O(1) Best Bid/Ask access via Red-Black Tree
+// - Anti-Scalper Dynamic Collars & Strict Self-Trade Prevention (Wash Trading Guard)
 type OrderBook struct {
 	mu           sync.RWMutex
 	EventSymbol  string
 	MaxSellPrice float64 // Anti-scalping collar ceiling
-	Bids         []*PriceLevel // Sorted descending (highest bid first)
-	Asks         []*PriceLevel // Sorted ascending (lowest ask first)
-	OrdersMap    map[uuid.UUID]*models.Order
+
+	// Red-Black Trees for O(1) min/max and O(log L) price level operations
+	bidsTree *RBTree // Highest price at Max()
+	asksTree *RBTree // Lowest price at Min()
+
+	// Direct O(1) maps from price cents -> PriceLevel
+	priceMapBids map[int64]*PriceLevel
+	priceMapAsks map[int64]*PriceLevel
+
+	// Direct O(1) map from OrderID -> OrderNode for O(1) cancellation unlinking
+	OrdersMap map[uuid.UUID]*OrderNode
 }
 
-// NewOrderBook creates a new OrderBook instance
+// NewOrderBook creates a new high-frequency OrderBook instance
 func NewOrderBook(eventSymbol string, maxSellPrice float64) *OrderBook {
 	return &OrderBook{
 		EventSymbol:  eventSymbol,
 		MaxSellPrice: maxSellPrice,
-		Bids:         make([]*PriceLevel, 0),
-		Asks:         make([]*PriceLevel, 0),
-		OrdersMap:    make(map[uuid.UUID]*models.Order),
+		bidsTree:     NewRBTree(),
+		asksTree:     NewRBTree(),
+		priceMapBids: make(map[int64]*PriceLevel),
+		priceMapAsks: make(map[int64]*PriceLevel),
+		OrdersMap:    make(map[uuid.UUID]*OrderNode),
 	}
 }
 
@@ -112,12 +220,12 @@ func (ob *OrderBook) MatchOrder(incoming *models.Order) ([]*models.Trade, error)
 		trades = ob.matchSell(incoming)
 	}
 
-	// If limit order has remaining unfilled quantity, insert it into the book
+	// If limit order has remaining unfilled quantity, insert it into the book in O(1) / O(log L)
 	if incoming.OrderType == models.OrderTypeLimit && incoming.UnfilledQuantity() > 0 {
 		ob.insertRestingOrderLocked(incoming)
 	}
 
-	// Sweep any resting crossed orders (e.g. if conditions allow matching)
+	// Sweep any resting crossed orders (e.g. from non-self crosses)
 	crossedTrades := ob.MatchCrossedOrdersLocked()
 	if len(crossedTrades) > 0 {
 		trades = append(trades, crossedTrades...)
@@ -126,37 +234,35 @@ func (ob *OrderBook) MatchOrder(incoming *models.Order) ([]*models.Trade, error)
 	return trades, nil
 }
 
-// matchBuy matches an incoming Buy order against the resting Asks (lowest asks first)
+// matchBuy matches an incoming Buy order against resting Asks (lowest asks first)
 func (ob *OrderBook) matchBuy(buyOrder *models.Order) []*models.Trade {
 	var trades []*models.Trade
 	now := time.Now().UTC()
+	buyCents := ToPriceCents(buyOrder.Price)
 
-	var remainingAsks []*PriceLevel
+	// Sweep through asks starting with the lowest ask (asksTree.Min())
+	for ob.asksTree.Len() > 0 && buyOrder.UnfilledQuantity() > 0 {
+		minNode := ob.asksTree.Min()
+		if minNode == nil {
+			break
+		}
+		bestAskLevel := minNode.Value
 
-	for _, level := range ob.Asks {
-		if buyOrder.UnfilledQuantity() == 0 {
-			remainingAsks = append(remainingAsks, level)
-			continue
+		// For Limit orders, if the cheapest ask price > buyer's limit, stop matching
+		if buyOrder.OrderType == models.OrderTypeLimit && bestAskLevel.PriceCents > buyCents {
+			break
 		}
 
-		// For Limit orders, if ask price > buyer's limit, stop matching
-		if buyOrder.OrderType == models.OrderTypeLimit && level.Price > buyOrder.Price {
-			remainingAsks = append(remainingAsks, level)
-			continue
-		}
+		// Execute against FIFO orders at this price level using the Doubly-Linked List
+		curr := bestAskLevel.Queue.Head
+		for curr != nil && buyOrder.UnfilledQuantity() > 0 {
+			restingAsk := curr.Order
+			next := curr.Next
 
-		// Execute against FIFO orders at this price level
-		var remainingOrders []*models.Order
-		for _, restingAsk := range level.Orders {
-			if buyOrder.UnfilledQuantity() == 0 {
-				remainingOrders = append(remainingOrders, restingAsk)
-				continue
-			}
-
-			// Don't match user with themselves if self-trade prevention is active
+			// Wash-Trading Guard: NEVER match user with themselves
 			if isSelfTradePrevented(restingAsk.UserID, buyOrder.UserID) {
-				remainingOrders = append(remainingOrders, restingAsk)
-				continue
+				curr = next
+				continue // Skip own resting order; keep it in book for other buyers
 			}
 
 			needed := buyOrder.UnfilledQuantity()
@@ -167,38 +273,51 @@ func (ob *OrderBook) matchBuy(buyOrder *models.Order) []*models.Trade {
 			}
 
 			if matchQty > 0 {
-				// Trade execution price is the maker's (resting) price
-				trade := &models.Trade{
-					ID:           uuid.New(),
-					TakerOrderID: buyOrder.ID,
-					MakerOrderID: restingAsk.ID,
-					EventSymbol:  ob.EventSymbol,
-					Price:        restingAsk.Price,
-					Quantity:     matchQty,
-					ExecutedAt:   now,
-				}
+				trade := acquireTrade()
+				trade.ID = uuid.New()
+				trade.TakerOrderID = buyOrder.ID
+				trade.MakerOrderID = restingAsk.ID
+				trade.EventSymbol = ob.EventSymbol
+				trade.Price = restingAsk.Price // Maker's price
+				trade.Quantity = matchQty
+				trade.ExecutedAt = now
 				trades = append(trades, trade)
 
 				buyOrder.FilledQuantity += matchQty
 				restingAsk.FilledQuantity += matchQty
+				bestAskLevel.Queue.TotalQuantity -= matchQty
 
 				if restingAsk.UnfilledQuantity() == 0 {
 					restingAsk.Status = models.OrderStatusFilled
 					delete(ob.OrdersMap, restingAsk.ID)
+					bestAskLevel.Queue.Remove(curr)
+					releaseOrderNode(curr)
 				} else {
 					restingAsk.Status = models.OrderStatusPartiallyFilled
-					remainingOrders = append(remainingOrders, restingAsk)
 				}
 			}
+
+			curr = next
 		}
 
-		if len(remainingOrders) > 0 {
-			level.Orders = remainingOrders
-			remainingAsks = append(remainingAsks, level)
+		// If all orders at this level have been filled, remove the empty price level in O(log L)
+		if bestAskLevel.Queue.Len == 0 {
+			delete(ob.priceMapAsks, bestAskLevel.PriceCents)
+			ob.asksTree.Delete(bestAskLevel.PriceCents)
+		} else {
+			// If orders remain but all remaining orders belong to the same buyer (self-trade), break
+			allSelf := true
+			for n := bestAskLevel.Queue.Head; n != nil; n = n.Next {
+				if !isSelfTradePrevented(n.Order.UserID, buyOrder.UserID) {
+					allSelf = false
+					break
+				}
+			}
+			if allSelf {
+				break // Cannot match further against own orders
+			}
 		}
 	}
-
-	ob.Asks = remainingAsks
 
 	if buyOrder.UnfilledQuantity() == 0 {
 		buyOrder.Status = models.OrderStatusFilled
@@ -213,32 +332,31 @@ func (ob *OrderBook) matchBuy(buyOrder *models.Order) []*models.Trade {
 func (ob *OrderBook) matchSell(sellOrder *models.Order) []*models.Trade {
 	var trades []*models.Trade
 	now := time.Now().UTC()
+	sellCents := ToPriceCents(sellOrder.Price)
 
-	var remainingBids []*PriceLevel
+	// Sweep through bids starting with the highest bid (bidsTree.Max())
+	for ob.bidsTree.Len() > 0 && sellOrder.UnfilledQuantity() > 0 {
+		maxNode := ob.bidsTree.Max()
+		if maxNode == nil {
+			break
+		}
+		bestBidLevel := maxNode.Value
 
-	for _, level := range ob.Bids {
-		if sellOrder.UnfilledQuantity() == 0 {
-			remainingBids = append(remainingBids, level)
-			continue
+		// For Limit orders, if highest bid < seller's minimum price, stop matching
+		if sellOrder.OrderType == models.OrderTypeLimit && bestBidLevel.PriceCents < sellCents {
+			break
 		}
 
-		// For Limit orders, if bid price < seller's minimum price, stop matching
-		if sellOrder.OrderType == models.OrderTypeLimit && level.Price < sellOrder.Price {
-			remainingBids = append(remainingBids, level)
-			continue
-		}
+		// Execute against FIFO orders at this price level using the Doubly-Linked List
+		curr := bestBidLevel.Queue.Head
+		for curr != nil && sellOrder.UnfilledQuantity() > 0 {
+			restingBid := curr.Order
+			next := curr.Next
 
-		var remainingOrders []*models.Order
-		for _, restingBid := range level.Orders {
-			if sellOrder.UnfilledQuantity() == 0 {
-				remainingOrders = append(remainingOrders, restingBid)
-				continue
-			}
-
-			// Don't match user with themselves if self-trade prevention is active
+			// Wash-Trading Guard: NEVER match user with themselves
 			if isSelfTradePrevented(restingBid.UserID, sellOrder.UserID) {
-				remainingOrders = append(remainingOrders, restingBid)
-				continue
+				curr = next
+				continue // Skip own resting order; keep it in book for other sellers
 			}
 
 			needed := sellOrder.UnfilledQuantity()
@@ -249,37 +367,51 @@ func (ob *OrderBook) matchSell(sellOrder *models.Order) []*models.Trade {
 			}
 
 			if matchQty > 0 {
-				trade := &models.Trade{
-					ID:           uuid.New(),
-					TakerOrderID: sellOrder.ID,
-					MakerOrderID: restingBid.ID,
-					EventSymbol:  ob.EventSymbol,
-					Price:        restingBid.Price,
-					Quantity:     matchQty,
-					ExecutedAt:   now,
-				}
+				trade := acquireTrade()
+				trade.ID = uuid.New()
+				trade.TakerOrderID = sellOrder.ID
+				trade.MakerOrderID = restingBid.ID
+				trade.EventSymbol = ob.EventSymbol
+				trade.Price = restingBid.Price // Maker's price
+				trade.Quantity = matchQty
+				trade.ExecutedAt = now
 				trades = append(trades, trade)
 
 				sellOrder.FilledQuantity += matchQty
 				restingBid.FilledQuantity += matchQty
+				bestBidLevel.Queue.TotalQuantity -= matchQty
 
 				if restingBid.UnfilledQuantity() == 0 {
 					restingBid.Status = models.OrderStatusFilled
 					delete(ob.OrdersMap, restingBid.ID)
+					bestBidLevel.Queue.Remove(curr)
+					releaseOrderNode(curr)
 				} else {
 					restingBid.Status = models.OrderStatusPartiallyFilled
-					remainingOrders = append(remainingOrders, restingBid)
 				}
 			}
+
+			curr = next
 		}
 
-		if len(remainingOrders) > 0 {
-			level.Orders = remainingOrders
-			remainingBids = append(remainingBids, level)
+		// If all orders at this level have been filled, remove the empty price level in O(log L)
+		if bestBidLevel.Queue.Len == 0 {
+			delete(ob.priceMapBids, bestBidLevel.PriceCents)
+			ob.bidsTree.Delete(bestBidLevel.PriceCents)
+		} else {
+			// If orders remain but all remaining orders belong to the same seller (self-trade), break
+			allSelf := true
+			for n := bestBidLevel.Queue.Head; n != nil; n = n.Next {
+				if !isSelfTradePrevented(n.Order.UserID, sellOrder.UserID) {
+					allSelf = false
+					break
+				}
+			}
+			if allSelf {
+				break // Cannot match further against own orders
+			}
 		}
 	}
-
-	ob.Bids = remainingBids
 
 	if sellOrder.UnfilledQuantity() == 0 {
 		sellOrder.Status = models.OrderStatusFilled
@@ -290,33 +422,49 @@ func (ob *OrderBook) matchSell(sellOrder *models.Order) []*models.Trade {
 	return trades
 }
 
-// MatchCrossedOrdersLocked sweeps and matches any crossed resting orders in the book (Bids[0].Price >= Asks[0].Price)
+// MatchCrossedOrdersLocked sweeps and matches any crossed resting orders in the book (Bids.Max() >= Asks.Min())
 func (ob *OrderBook) MatchCrossedOrdersLocked() []*models.Trade {
 	var trades []*models.Trade
 	now := time.Now().UTC()
 
-	for len(ob.Bids) > 0 && len(ob.Asks) > 0 {
-		bestBidLevel := ob.Bids[0]
-		bestAskLevel := ob.Asks[0]
+	for ob.bidsTree.Len() > 0 && ob.asksTree.Len() > 0 {
+		bestBidNode := ob.bidsTree.Max()
+		bestAskNode := ob.asksTree.Min()
+		if bestBidNode == nil || bestAskNode == nil {
+			break
+		}
 
-		if bestBidLevel.Price < bestAskLevel.Price {
+		bestBidLevel := bestBidNode.Value
+		bestAskLevel := bestAskNode.Value
+
+		if bestBidLevel.PriceCents < bestAskLevel.PriceCents {
 			break // Book is healthy and no longer crossed
 		}
 
-		if len(bestBidLevel.Orders) == 0 {
-			ob.Bids = ob.Bids[1:]
+		if bestBidLevel.Queue.Len == 0 {
+			delete(ob.priceMapBids, bestBidLevel.PriceCents)
+			ob.bidsTree.Delete(bestBidLevel.PriceCents)
 			continue
 		}
-		if len(bestAskLevel.Orders) == 0 {
-			ob.Asks = ob.Asks[1:]
+		if bestAskLevel.Queue.Len == 0 {
+			delete(ob.priceMapAsks, bestAskLevel.PriceCents)
+			ob.asksTree.Delete(bestAskLevel.PriceCents)
 			continue
 		}
 
-		bestBid := bestBidLevel.Orders[0]
-		bestAsk := bestAskLevel.Orders[0]
+		bestBidNodeOrder := bestBidLevel.Queue.Head
+		bestAskNodeOrder := bestAskLevel.Queue.Head
 
+		if bestBidNodeOrder == nil || bestAskNodeOrder == nil {
+			break
+		}
+
+		bestBid := bestBidNodeOrder.Order
+		bestAsk := bestAskNodeOrder.Order
+
+		// Wash-Trading Guard: Cannot match crossed orders of identical users
 		if isSelfTradePrevented(bestBid.UserID, bestAsk.UserID) {
-			break // Cannot match further due to self-trade prevention
+			break
 		}
 
 		needed := bestBid.UnfilledQuantity()
@@ -330,7 +478,7 @@ func (ob *OrderBook) MatchCrossedOrdersLocked() []*models.Trade {
 			break
 		}
 
-		// Maker is the older order
+		// Maker is the older resting order
 		var makerID, takerID uuid.UUID
 		var execPrice float64
 		if bestAsk.CreatedAt.Before(bestBid.CreatedAt) {
@@ -343,24 +491,26 @@ func (ob *OrderBook) MatchCrossedOrdersLocked() []*models.Trade {
 			execPrice = bestBid.Price
 		}
 
-		trade := &models.Trade{
-			ID:           uuid.New(),
-			TakerOrderID: takerID,
-			MakerOrderID: makerID,
-			EventSymbol:  ob.EventSymbol,
-			Price:        execPrice,
-			Quantity:     matchQty,
-			ExecutedAt:   now,
-		}
+		trade := acquireTrade()
+		trade.ID = uuid.New()
+		trade.TakerOrderID = takerID
+		trade.MakerOrderID = makerID
+		trade.EventSymbol = ob.EventSymbol
+		trade.Price = execPrice
+		trade.Quantity = matchQty
+		trade.ExecutedAt = now
 		trades = append(trades, trade)
 
 		bestBid.FilledQuantity += matchQty
 		bestAsk.FilledQuantity += matchQty
+		bestBidLevel.Queue.TotalQuantity -= matchQty
+		bestAskLevel.Queue.TotalQuantity -= matchQty
 
 		if bestBid.UnfilledQuantity() == 0 {
 			bestBid.Status = models.OrderStatusFilled
 			delete(ob.OrdersMap, bestBid.ID)
-			bestBidLevel.Orders = bestBidLevel.Orders[1:]
+			bestBidLevel.Queue.Remove(bestBidNodeOrder)
+			releaseOrderNode(bestBidNodeOrder)
 		} else {
 			bestBid.Status = models.OrderStatusPartiallyFilled
 		}
@@ -368,16 +518,19 @@ func (ob *OrderBook) MatchCrossedOrdersLocked() []*models.Trade {
 		if bestAsk.UnfilledQuantity() == 0 {
 			bestAsk.Status = models.OrderStatusFilled
 			delete(ob.OrdersMap, bestAsk.ID)
-			bestAskLevel.Orders = bestAskLevel.Orders[1:]
+			bestAskLevel.Queue.Remove(bestAskNodeOrder)
+			releaseOrderNode(bestAskNodeOrder)
 		} else {
 			bestAsk.Status = models.OrderStatusPartiallyFilled
 		}
 
-		if len(bestBidLevel.Orders) == 0 {
-			ob.Bids = ob.Bids[1:]
+		if bestBidLevel.Queue.Len == 0 {
+			delete(ob.priceMapBids, bestBidLevel.PriceCents)
+			ob.bidsTree.Delete(bestBidLevel.PriceCents)
 		}
-		if len(bestAskLevel.Orders) == 0 {
-			ob.Asks = ob.Asks[1:]
+		if bestAskLevel.Queue.Len == 0 {
+			delete(ob.priceMapAsks, bestAskLevel.PriceCents)
+			ob.asksTree.Delete(bestAskLevel.PriceCents)
 		}
 	}
 
@@ -391,48 +544,38 @@ func (ob *OrderBook) MatchCrossedOrders() []*models.Trade {
 	return ob.MatchCrossedOrdersLocked()
 }
 
-// insertRestingOrderLocked inserts an unfilled limit order into the book
+// insertRestingOrderLocked inserts an unfilled limit order into the book in O(1) / O(log L)
 func (ob *OrderBook) insertRestingOrderLocked(order *models.Order) {
-	ob.OrdersMap[order.ID] = order
+	cents := ToPriceCents(order.Price)
 
 	if order.Side == models.SideBuy {
-		// Insert into Bids (descending order)
-		idx := -1
-		for i, lvl := range ob.Bids {
-			if lvl.Price == order.Price {
-				lvl.Orders = append(lvl.Orders, order)
-				return
+		level, exists := ob.priceMapBids[cents]
+		if !exists {
+			level = &PriceLevel{
+				PriceCents: cents,
+				Price:      order.Price,
+				Queue:      &OrderQueue{},
 			}
-			if lvl.Price < order.Price {
-				idx = i
-				break
-			}
+			ob.priceMapBids[cents] = level
+			ob.bidsTree.Insert(cents, level)
 		}
-		newLevel := &PriceLevel{Price: order.Price, Orders: []*models.Order{order}}
-		if idx == -1 {
-			ob.Bids = append(ob.Bids, newLevel)
-		} else {
-			ob.Bids = append(ob.Bids[:idx], append([]*PriceLevel{newLevel}, ob.Bids[idx:]...)...)
-		}
+		node := acquireOrderNode(order, cents, level)
+		level.Queue.Append(node)
+		ob.OrdersMap[order.ID] = node
 	} else {
-		// Insert into Asks (ascending order)
-		idx := -1
-		for i, lvl := range ob.Asks {
-			if lvl.Price == order.Price {
-				lvl.Orders = append(lvl.Orders, order)
-				return
+		level, exists := ob.priceMapAsks[cents]
+		if !exists {
+			level = &PriceLevel{
+				PriceCents: cents,
+				Price:      order.Price,
+				Queue:      &OrderQueue{},
 			}
-			if lvl.Price > order.Price {
-				idx = i
-				break
-			}
+			ob.priceMapAsks[cents] = level
+			ob.asksTree.Insert(cents, level)
 		}
-		newLevel := &PriceLevel{Price: order.Price, Orders: []*models.Order{order}}
-		if idx == -1 {
-			ob.Asks = append(ob.Asks, newLevel)
-		} else {
-			ob.Asks = append(ob.Asks[:idx], append([]*PriceLevel{newLevel}, ob.Asks[idx:]...)...)
-		}
+		node := acquireOrderNode(order, cents, level)
+		level.Queue.Append(node)
+		ob.OrdersMap[order.ID] = node
 	}
 }
 
@@ -443,43 +586,36 @@ func (ob *OrderBook) InsertRestingOrder(order *models.Order) {
 	ob.insertRestingOrderLocked(order)
 }
 
-// CancelOrder removes an active order from the in-memory book
+// CancelOrder removes an active order from the in-memory book in O(1)
 func (ob *OrderBook) CancelOrder(orderID uuid.UUID) (*models.Order, error) {
 	ob.mu.Lock()
 	defer ob.mu.Unlock()
 
-	order, exists := ob.OrdersMap[orderID]
+	node, exists := ob.OrdersMap[orderID]
 	if !exists {
 		return nil, ErrOrderNotFound
 	}
 
 	delete(ob.OrdersMap, orderID)
+	order := node.Order
 	order.Status = models.OrderStatusCancelled
 
-	if order.Side == models.SideBuy {
-		ob.Bids = removeOrderFromLevels(ob.Bids, orderID)
-	} else {
-		ob.Asks = removeOrderFromLevels(ob.Asks, orderID)
-	}
-
-	return order, nil
-}
-
-func removeOrderFromLevels(levels []*PriceLevel, orderID uuid.UUID) []*PriceLevel {
-	var newLevels []*PriceLevel
-	for _, lvl := range levels {
-		var remainingOrders []*models.Order
-		for _, o := range lvl.Orders {
-			if o.ID != orderID {
-				remainingOrders = append(remainingOrders, o)
+	level := node.Level
+	if level != nil && level.Queue != nil {
+		level.Queue.Remove(node)
+		if level.Queue.Len == 0 {
+			if order.Side == models.SideBuy {
+				delete(ob.priceMapBids, level.PriceCents)
+				ob.bidsTree.Delete(level.PriceCents)
+			} else {
+				delete(ob.priceMapAsks, level.PriceCents)
+				ob.asksTree.Delete(level.PriceCents)
 			}
 		}
-		if len(remainingOrders) > 0 {
-			lvl.Orders = remainingOrders
-			newLevels = append(newLevels, lvl)
-		}
 	}
-	return newLevels
+
+	releaseOrderNode(node)
+	return order, nil
 }
 
 // GetL2Depth computes aggregated Level-2 depth ladder up to `limit` price tiers
@@ -491,11 +627,12 @@ func (ob *OrderBook) GetL2Depth(limit int) models.L2OrderBook {
 		limit = 20
 	}
 
-	bidLevels := make([]models.L2PriceLevel, 0, limit)
-	for i, lvl := range ob.Bids {
-		if i >= limit {
-			break
-		}
+	// Traverse Red-Black Trees in sorted order (Bids descending, Asks ascending)
+	bidLevelsList := ob.bidsTree.Descending(limit)
+	askLevelsList := ob.asksTree.Ascending(limit)
+
+	bidLevels := make([]models.L2PriceLevel, 0, len(bidLevelsList))
+	for _, lvl := range bidLevelsList {
 		bidLevels = append(bidLevels, models.L2PriceLevel{
 			Price:      lvl.Price,
 			Quantity:   lvl.TotalQuantity(),
@@ -503,11 +640,8 @@ func (ob *OrderBook) GetL2Depth(limit int) models.L2OrderBook {
 		})
 	}
 
-	askLevels := make([]models.L2PriceLevel, 0, limit)
-	for i, lvl := range ob.Asks {
-		if i >= limit {
-			break
-		}
+	askLevels := make([]models.L2PriceLevel, 0, len(askLevelsList))
+	for _, lvl := range askLevelsList {
 		askLevels = append(askLevels, models.L2PriceLevel{
 			Price:      lvl.Price,
 			Quantity:   lvl.TotalQuantity(),
@@ -516,13 +650,13 @@ func (ob *OrderBook) GetL2Depth(limit int) models.L2OrderBook {
 	}
 
 	bestBid := 0.0
-	if len(bidLevels) > 0 {
-		bestBid = bidLevels[0].Price
+	if maxNode := ob.bidsTree.Max(); maxNode != nil && maxNode.Value != nil {
+		bestBid = maxNode.Value.Price
 	}
 
 	bestAsk := 0.0
-	if len(askLevels) > 0 {
-		bestAsk = askLevels[0].Price
+	if minNode := ob.asksTree.Min(); minNode != nil && minNode.Value != nil {
+		bestAsk = minNode.Value.Price
 	}
 
 	spread := 0.0
@@ -547,20 +681,20 @@ func (ob *OrderBook) Stats() map[string]interface{} {
 	defer ob.mu.RUnlock()
 
 	totalBidQty := 0
-	for _, l := range ob.Bids {
+	for _, l := range ob.priceMapBids {
 		totalBidQty += l.TotalQuantity()
 	}
 
 	totalAskQty := 0
-	for _, l := range ob.Asks {
+	for _, l := range ob.priceMapAsks {
 		totalAskQty += l.TotalQuantity()
 	}
 
 	return map[string]interface{}{
 		"event_symbol":   ob.EventSymbol,
 		"active_orders":  len(ob.OrdersMap),
-		"bid_levels":     len(ob.Bids),
-		"ask_levels":     len(ob.Asks),
+		"bid_levels":     ob.bidsTree.Len(),
+		"ask_levels":     ob.asksTree.Len(),
 		"total_bid_qty":  totalBidQty,
 		"total_ask_qty":  totalAskQty,
 		"max_sell_price": ob.MaxSellPrice,

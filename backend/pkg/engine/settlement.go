@@ -8,12 +8,25 @@ import (
 	"log"
 	"time"
 
+	"darkhold-dex/backend/pkg/email"
 	"darkhold-dex/backend/pkg/models"
 
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgxpool"
 )
+
+// TradeEmailMeta stores parameters for non-blocking email notifications
+type TradeEmailMeta struct {
+	BuyerID     uuid.UUID
+	SellerID    uuid.UUID
+	EventSymbol string
+	Quantity    int
+	Price       float64
+	TotalAmount float64
+	TradeID     string
+	NewQRHash   string
+}
 
 // SettleTrades executes atomic double-entry settlement, relic inventory transfer, and QR rotation for matched trades
 func SettleTrades(ctx context.Context, pool *pgxpool.Pool, trades []*models.Trade) error {
@@ -27,9 +40,15 @@ func SettleTrades(ctx context.Context, pool *pgxpool.Pool, trades []*models.Trad
 	}
 	defer tx.Rollback(ctx)
 
+	emailMetas := make([]TradeEmailMeta, 0, len(trades))
+
 	for _, trade := range trades {
-		if err := settleSingleTrade(ctx, tx, trade); err != nil {
+		meta, err := settleSingleTrade(ctx, tx, trade)
+		if err != nil {
 			return fmt.Errorf("failed to settle trade %s: %w", trade.ID, err)
+		}
+		if meta != nil {
+			emailMetas = append(emailMetas, *meta)
 		}
 	}
 
@@ -38,10 +57,31 @@ func SettleTrades(ctx context.Context, pool *pgxpool.Pool, trades []*models.Trad
 	}
 
 	log.Printf("🏛️  [Trade Settlement Committed] %d trade(s) settled with zero-sum ledger invariants and rotated QR hashes.", len(trades))
+
+	// Dispatch asynchronous email notifications via Resend (Non-blocking background goroutine)
+	if len(emailMetas) > 0 && pool != nil {
+		go dispatchTradeEmails(pool, emailMetas)
+	}
+
 	return nil
 }
 
-func settleSingleTrade(ctx context.Context, tx pgx.Tx, trade *models.Trade) error {
+func dispatchTradeEmails(pool *pgxpool.Pool, metas []TradeEmailMeta) {
+	for _, m := range metas {
+		var bEmail, bUsername, sEmail, sUsername string
+		_ = pool.QueryRow(context.Background(), "SELECT email, username FROM public.users WHERE id = $1", m.BuyerID).Scan(&bEmail, &bUsername)
+		_ = pool.QueryRow(context.Background(), "SELECT email, username FROM public.users WHERE id = $1", m.SellerID).Scan(&sEmail, &sUsername)
+
+		if bEmail != "" {
+			_ = email.SendTradeSettlementEmail(bEmail, bUsername, "BUYER", m.EventSymbol, m.Quantity, m.Price, m.TotalAmount, m.TradeID, m.NewQRHash)
+		}
+		if sEmail != "" {
+			_ = email.SendTradeSettlementEmail(sEmail, sUsername, "SELLER", m.EventSymbol, m.Quantity, m.Price, m.TotalAmount, m.TradeID, "")
+		}
+	}
+}
+
+func settleSingleTrade(ctx context.Context, tx pgx.Tx, trade *models.Trade) (*TradeEmailMeta, error) {
 	// 1. Fetch Taker & Maker Order details
 	var takerUserID, makerUserID uuid.UUID
 	var takerSide, makerSide string
@@ -53,7 +93,7 @@ func settleSingleTrade(ctx context.Context, tx pgx.Tx, trade *models.Trade) erro
 		FROM public.orders WHERE id = $1
 	`, trade.TakerOrderID).Scan(&takerUserID, &takerSide, &takerPrice, &eventSymbol, &quoteCurrency)
 	if err != nil {
-		return fmt.Errorf("failed to query taker order %s: %w", trade.TakerOrderID, err)
+		return nil, fmt.Errorf("failed to query taker order %s: %w", trade.TakerOrderID, err)
 	}
 
 	err = tx.QueryRow(ctx, `
@@ -61,7 +101,7 @@ func settleSingleTrade(ctx context.Context, tx pgx.Tx, trade *models.Trade) erro
 		FROM public.orders WHERE id = $1
 	`, trade.MakerOrderID).Scan(&makerUserID, &makerSide, &makerPrice, &eventSymbol, &quoteCurrency)
 	if err != nil {
-		return fmt.Errorf("failed to query maker order %s: %w", trade.MakerOrderID, err)
+		return nil, fmt.Errorf("failed to query maker order %s: %w", trade.MakerOrderID, err)
 	}
 
 	var buyerID, sellerID uuid.UUID
@@ -81,7 +121,7 @@ func settleSingleTrade(ctx context.Context, tx pgx.Tx, trade *models.Trade) erro
 	var eventID uuid.UUID
 	err = tx.QueryRow(ctx, "SELECT id FROM public.events WHERE symbol = $1", eventSymbol).Scan(&eventID)
 	if err != nil {
-		return fmt.Errorf("failed to find event %s: %w", eventSymbol, err)
+		return nil, fmt.Errorf("failed to find event %s: %w", eventSymbol, err)
 	}
 
 	// 3. Find seller's locked ticket in relic_inventory
@@ -107,7 +147,7 @@ func settleSingleTrade(ctx context.Context, tx pgx.Tx, trade *models.Trade) erro
 			FOR UPDATE;
 		`, sellerID, eventID).Scan(&relicID, &externalTicketID)
 		if err != nil {
-			return fmt.Errorf("seller %s has no available relic in inventory for event %s: %w", sellerID, eventSymbol, err)
+			return nil, fmt.Errorf("seller %s has no available relic in inventory for event %s: %w", sellerID, eventSymbol, err)
 		}
 	}
 
@@ -123,7 +163,7 @@ func settleSingleTrade(ctx context.Context, tx pgx.Tx, trade *models.Trade) erro
 		WHERE id = $3;
 	`, buyerID, newQRHash, relicID)
 	if err != nil {
-		return fmt.Errorf("failed to transfer relic inventory to buyer: %w", err)
+		return nil, fmt.Errorf("failed to transfer relic inventory to buyer: %w", err)
 	}
 
 	// 5. Insert trade audit record
@@ -133,30 +173,30 @@ func settleSingleTrade(ctx context.Context, tx pgx.Tx, trade *models.Trade) erro
 		ON CONFLICT (id) DO NOTHING;
 	`, trade.ID, trade.TakerOrderID, trade.MakerOrderID, trade.EventSymbol, trade.Price, trade.Quantity, trade.ExecutedAt)
 	if err != nil {
-		return fmt.Errorf("failed to insert trade audit log: %w", err)
+		return nil, fmt.Errorf("failed to insert trade audit log: %w", err)
 	}
 
 	// 6. Double-Entry Account Resolution (Get or Create JIT Accounts)
 	buyerFiatAccountID, err := getOrCreateAccount(ctx, tx, buyerID, quoteCurrency, "ESCROW_LOCKED")
 	if err != nil {
-		return err
+		return nil, err
 	}
 	buyerFiatAvailAccountID, err := getOrCreateAccount(ctx, tx, buyerID, quoteCurrency, "AVAILABLE")
 	if err != nil {
-		return err
+		return nil, err
 	}
 	sellerFiatAvailAccountID, err := getOrCreateAccount(ctx, tx, sellerID, quoteCurrency, "AVAILABLE")
 	if err != nil {
-		return err
+		return nil, err
 	}
 
 	sellerTicketEscrowAccountID, err := getOrCreateAccount(ctx, tx, sellerID, eventSymbol, "ESCROW_LOCKED")
 	if err != nil {
-		return err
+		return nil, err
 	}
 	buyerTicketAvailAccountID, err := getOrCreateAccount(ctx, tx, buyerID, eventSymbol, "AVAILABLE")
 	if err != nil {
-		return err
+		return nil, err
 	}
 
 	// 7. Insert Transaction Wrapper
@@ -167,7 +207,7 @@ func settleSingleTrade(ctx context.Context, tx pgx.Tx, trade *models.Trade) erro
 		RETURNING id;
 	`, trade.ID.String()).Scan(&transactionID)
 	if err != nil {
-		return fmt.Errorf("failed to insert settlement transaction: %w", err)
+		return nil, fmt.Errorf("failed to insert settlement transaction: %w", err)
 	}
 
 	// 8. Double-Entry Ledger Writes
@@ -180,7 +220,7 @@ func settleSingleTrade(ctx context.Context, tx pgx.Tx, trade *models.Trade) erro
 			($1, $4, $5);
 	`, transactionID, buyerFiatAccountID, -fiatTradeAmount, sellerFiatAvailAccountID, fiatTradeAmount)
 	if err != nil {
-		return fmt.Errorf("failed to record fiat trade ledger entries: %w", err)
+		return nil, fmt.Errorf("failed to record fiat trade ledger entries: %w", err)
 	}
 
 	// B: Swap Ticket Tokens (Seller's locked ticket -> Buyer's available ticket)
@@ -192,7 +232,7 @@ func settleSingleTrade(ctx context.Context, tx pgx.Tx, trade *models.Trade) erro
 			($1, $4, $5);
 	`, transactionID, sellerTicketEscrowAccountID, -ticketQty, buyerTicketAvailAccountID, ticketQty)
 	if err != nil {
-		return fmt.Errorf("failed to record ticket trade ledger entries: %w", err)
+		return nil, fmt.Errorf("failed to record ticket trade ledger entries: %w", err)
 	}
 
 	// C: Refund Buyer Excess Locked Fiat (if limit price > trade execution price)
@@ -206,7 +246,7 @@ func settleSingleTrade(ctx context.Context, tx pgx.Tx, trade *models.Trade) erro
 					($1, $4, $5);
 			`, transactionID, buyerFiatAccountID, -excessRefund, buyerFiatAvailAccountID, excessRefund)
 			if err != nil {
-				return fmt.Errorf("failed to record excess fiat refund ledger entries: %w", err)
+				return nil, fmt.Errorf("failed to record excess fiat refund ledger entries: %w", err)
 			}
 		}
 	}
@@ -221,11 +261,20 @@ func settleSingleTrade(ctx context.Context, tx pgx.Tx, trade *models.Trade) erro
 			WHERE id = $2;
 		`, trade.Quantity, orderID)
 		if err != nil {
-			return fmt.Errorf("failed to update order fill status for %s: %w", orderID, err)
+			return nil, fmt.Errorf("failed to update order fill status for %s: %w", orderID, err)
 		}
 	}
 
-	return nil
+	return &TradeEmailMeta{
+		BuyerID:     buyerID,
+		SellerID:    sellerID,
+		EventSymbol: eventSymbol,
+		Quantity:    trade.Quantity,
+		Price:       trade.Price,
+		TotalAmount: fiatTradeAmount,
+		TradeID:     trade.ID.String(),
+		NewQRHash:   newQRHash,
+	}, nil
 }
 
 func getOrCreateAccount(ctx context.Context, tx pgx.Tx, userID uuid.UUID, currency, accountType string) (uuid.UUID, error) {
