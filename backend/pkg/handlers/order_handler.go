@@ -299,13 +299,18 @@ func PlaceOrder(w http.ResponseWriter, r *http.Request) {
 	// ========================================================
 	// Step 4: Insert Order into public.orders
 	// ========================================================
+	orderPrice := req.Price
+	if req.OrderType == string(models.OrderTypeMarket) && orderPrice <= 0 {
+		orderPrice = maxSellPrice
+	}
+
 	_, err = tx.Exec(ctx, `
 		INSERT INTO public.orders (
 			id, user_id, event_symbol, quote_currency, side, order_type, price, quantity, filled_quantity, status, created_at, updated_at
 		) VALUES (
 			$1, $2, $3, $4, $5, $6, $7, $8, 0, 'OPEN', $9, $9
 		);
-	`, orderID, claims.UserID, req.EventSymbol, req.QuoteCurrency, req.Side, req.OrderType, req.Price, req.Quantity, now)
+	`, orderID, claims.UserID, req.EventSymbol, req.QuoteCurrency, req.Side, req.OrderType, orderPrice, req.Quantity, now)
 
 	if err != nil {
 		log.Printf("❌ [PlaceOrder Insert Error]: %v", err)
@@ -325,7 +330,7 @@ func PlaceOrder(w http.ResponseWriter, r *http.Request) {
 		QuoteCurrency:  req.QuoteCurrency,
 		Side:           models.OrderSide(req.Side),
 		OrderType:      models.OrderType(req.OrderType),
-		Price:          req.Price,
+		Price:          orderPrice,
 		Quantity:       req.Quantity,
 		FilledQuantity: 0,
 		Status:         models.OrderStatusOpen,
@@ -334,10 +339,10 @@ func PlaceOrder(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// ========================================================
-	// Step 4: Publish to Redis ZSETs (Pre-Matching Shadow)
+	// Step 4: Publish to Redis ZSETs (Pre-Matching Shadow for Limit Orders)
 	// ========================================================
 	rdb := queue.GetRedisUniversalClient()
-	if rdb != nil {
+	if rdb != nil && order.OrderType == models.OrderTypeLimit {
 		bidsKey := fmt.Sprintf("orderbook:%s:bids", order.EventSymbol)
 		asksKey := fmt.Sprintf("orderbook:%s:asks", order.EventSymbol)
 		orderKey := fmt.Sprintf("order:%s", order.ID.String())

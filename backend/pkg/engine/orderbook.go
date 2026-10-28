@@ -546,6 +546,10 @@ func (ob *OrderBook) MatchCrossedOrders() []*models.Trade {
 
 // insertRestingOrderLocked inserts an unfilled limit order into the book in O(1) / O(log L)
 func (ob *OrderBook) insertRestingOrderLocked(order *models.Order) {
+	if order == nil || order.OrderType != models.OrderTypeLimit {
+		return
+	}
+
 	cents := ToPriceCents(order.Price)
 
 	if order.Side == models.SideBuy {
@@ -581,6 +585,9 @@ func (ob *OrderBook) insertRestingOrderLocked(order *models.Order) {
 
 // InsertRestingOrder public method for loading active orders on engine startup
 func (ob *OrderBook) InsertRestingOrder(order *models.Order) {
+	if order == nil || order.OrderType != models.OrderTypeLimit {
+		return
+	}
 	ob.mu.Lock()
 	defer ob.mu.Unlock()
 	ob.insertRestingOrderLocked(order)
