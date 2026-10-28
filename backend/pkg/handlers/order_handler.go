@@ -14,6 +14,7 @@ import (
 	"darkhold-dex/backend/pkg/engine"
 	"darkhold-dex/backend/pkg/middleware"
 	"darkhold-dex/backend/pkg/models"
+	"darkhold-dex/backend/pkg/queue"
 
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5"
@@ -472,6 +473,21 @@ func GetMarketOrderBook(w http.ResponseWriter, r *http.Request) {
 	}
 	symbol := strings.ToUpper(parts[2])
 
+	// 1. Ultra-fast path: Serve pre-aggregated Level-2 depth directly from Redis (< 0.3ms)
+	rdb := queue.GetRedisUniversalClient()
+	if rdb != nil {
+		snapshotKey := fmt.Sprintf("orderbook:%s:snapshot", symbol)
+		val, err := rdb.Get(r.Context(), snapshotKey).Result()
+		if err == nil && val != "" {
+			w.Header().Set("Content-Type", "application/json")
+			w.Header().Set("X-Data-Source", "REDIS_ZSET_CACHE")
+			w.WriteHeader(http.StatusOK)
+			_, _ = w.Write([]byte(val))
+			return
+		}
+	}
+
+	// 2. Resilient Fallback: Query in-memory engine and populate Redis
 	if engine.GlobalEngine == nil {
 		writeOrderError(w, http.StatusServiceUnavailable, "Matching engine unavailable", "ENGINE_UNAVAILABLE")
 		return
@@ -483,7 +499,13 @@ func GetMarketOrderBook(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	// Async sync back to Redis if it was missing
+	if rdb != nil {
+		go engine.SyncL2DepthToRedis(context.Background(), symbol, depth)
+	}
+
 	w.Header().Set("Content-Type", "application/json")
+	w.Header().Set("X-Data-Source", "GO_MEMORY_ENGINE")
 	_ = json.NewEncoder(w).Encode(depth)
 }
 

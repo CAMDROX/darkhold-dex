@@ -481,7 +481,11 @@ func (w *TicketWorker) HandleTradeSettlement(ctx context.Context, t *asynq.Task)
 		log.Printf("❌ [Trade Settlement Worker] Unmarshal payload failed: %v", err)
 		return fmt.Errorf("json.Unmarshal failed: %v: %w", err, asynq.SkipRetry)
 	}
+	return w.HandleTradeSettlementInternal(ctx, payload)
+}
 
+// HandleTradeSettlementInternal executes atomic trade settlement logic
+func (w *TicketWorker) HandleTradeSettlementInternal(ctx context.Context, payload TradeSettlePayload) error {
 	log.Printf("🏛️  [Trade Settlement Worker] Processing settlement: Maker=%s Taker=%s Event=%s Price=%.2f Qty=%d",
 		payload.MakerOrderID, payload.TakerOrderID, payload.EventSymbol, payload.Price, payload.Quantity)
 
