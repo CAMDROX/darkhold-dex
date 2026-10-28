@@ -22,9 +22,13 @@ import (
 
 	"github.com/google/uuid"
 	"github.com/hibiken/asynq"
+	"github.com/joho/godotenv"
 )
 
 func main() {
+	_ = godotenv.Load(".env")
+	_ = godotenv.Load("../.env")
+
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
@@ -100,6 +104,20 @@ func main() {
 			}
 		}
 
+		redisStatus := "PENDING_CONFIG"
+		var redisPingLatency string
+		if rdb := queue.GetRedisUniversalClient(); rdb != nil {
+			rStart := time.Now()
+			rCtx, rCancel := context.WithTimeout(r.Context(), 3*time.Second)
+			defer rCancel()
+			if err := rdb.Ping(rCtx).Err(); err == nil {
+				redisStatus = "CONNECTED_OPERATIONAL"
+				redisPingLatency = fmt.Sprintf("%.2fms", float64(time.Since(rStart).Microseconds())/1000.0)
+			} else {
+				redisStatus = "PING_FAILED"
+			}
+		}
+
 		json.NewEncoder(w).Encode(map[string]interface{}{
 			"status":             "OPERATIONAL",
 			"matching_engine":    "Go In-Memory FIFO",
@@ -110,11 +128,15 @@ func main() {
 				"status":       dbStatus,
 				"ping_latency": pingLatency,
 			},
+			"redis_cloud": map[string]interface{}{
+				"status":       redisStatus,
+				"ping_latency": redisPingLatency,
+			},
 			"websocket_hub": wsHub.GetOnlineStats(),
 			"asynq_queue": map[string]interface{}{
-				"status": "CONFIGURED",
-				"driver": "Redis / Asynq",
-				"queues": []string{"critical", "default", "low"},
+				"status": redisStatus,
+				"driver": "Redis Cloud / Asynq",
+				"queues": []string{"settlements", "critical", "default", "low"},
 			},
 		})
 	})
