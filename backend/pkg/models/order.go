@@ -72,6 +72,7 @@ type L2PriceLevel struct {
 // L2OrderBook is the aggregated Level-2 order book depth ladder
 type L2OrderBook struct {
 	EventSymbol string         `json:"event_symbol"`
+	Symbol      string         `json:"symbol"`
 	Bids        []L2PriceLevel `json:"bids"`
 	Asks        []L2PriceLevel `json:"asks"`
 	Spread      float64        `json:"spread"`

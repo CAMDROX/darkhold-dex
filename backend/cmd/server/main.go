@@ -80,6 +80,7 @@ func main() {
 	} else {
 		matchingEngine = engine.InitGlobalEngine(nil, wsHub)
 	}
+	matchingEngine.StartPubSubMatchingTrigger(ctx)
 
 	mux := http.NewServeMux()
 

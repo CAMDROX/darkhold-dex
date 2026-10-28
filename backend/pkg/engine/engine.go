@@ -19,6 +19,11 @@ import (
 	"github.com/redis/go-redis/v9"
 )
 
+const (
+	QueueOrdersMatch     = "darkhold:queue:orders:match"
+	ChannelEngineTrigger = "darkhold:engine:trigger"
+)
+
 var (
 	GlobalEngine *Engine
 )
@@ -76,6 +81,7 @@ func (lt *LatencyTracker) Percentiles() (p50, p90, p99 float64, total int64) {
 // Engine encapsulates the entire exchange matching environment
 type Engine struct {
 	mu      sync.RWMutex
+	drainMu sync.Mutex
 	books   map[string]*OrderBook
 	pool    *pgxpool.Pool
 	hub     *ws.Hub
@@ -173,10 +179,13 @@ func (e *Engine) LoadActiveOrdersFromDB(ctx context.Context) error {
 		trades := book.MatchCrossedOrders()
 		if len(trades) > 0 {
 			log.Printf("⚡ [Engine Hydration] Resolved %d crossed trade(s) for symbol %s", len(trades), book.EventSymbol)
-			e.handleTradesPostMatch(ctx, book, trades)
+			e.handleTradesPostMatch(ctx, book, trades, nil)
 		}
 	}
 	e.mu.Unlock()
+
+	// Drain any pending orders remaining in the matching queue
+	e.drainAndMatchOrders(ctx, "")
 
 	// Hydrate Redis ZSETs and snapshots for all active markets from resting orders
 	if rdb := queue.GetRedisUniversalClient(); rdb != nil {
@@ -266,12 +275,12 @@ func (e *Engine) ProcessOrder(ctx context.Context, order *models.Order) ([]*mode
 	e.tracker.Record(elapsedMicro)
 
 	// 3. Trade Settlement Handoff & L2 Depth broadcast
-	e.handleTradesPostMatch(ctx, book, trades)
+	e.handleTradesPostMatch(ctx, book, trades, order)
 
 	return trades, nil
 }
 
-func (e *Engine) handleTradesPostMatch(ctx context.Context, book *OrderBook, trades []*models.Trade) {
+func (e *Engine) handleTradesPostMatch(ctx context.Context, book *OrderBook, trades []*models.Trade, incomingOrder *models.Order) {
 	rdb := queue.GetRedisUniversalClient()
 	if len(trades) > 0 {
 		bidsKey := fmt.Sprintf("orderbook:%s:bids", book.EventSymbol)
@@ -319,12 +328,14 @@ func (e *Engine) handleTradesPostMatch(ctx context.Context, book *OrderBook, tra
 				_ = SettleTrades(ctx, e.pool, []*models.Trade{trade})
 			}
 
-			// Broadcast trade events down WebSocket
+			// Broadcast trade events down WebSocket (in-memory + cross-process Redis Pub/Sub)
 			tradePayload := map[string]interface{}{
+				"id":           trade.ID.String(),
+				"trade_id":     trade.ID.String(),
 				"type":         "TRADE_EXECUTED",
 				"event":        "TRADE_EXECUTED",
-				"trade_id":     trade.ID.String(),
 				"event_symbol": trade.EventSymbol,
+				"symbol":       trade.EventSymbol,
 				"price":        trade.Price,
 				"quantity":     trade.Quantity,
 				"executed_at":  trade.ExecutedAt,
@@ -332,6 +343,48 @@ func (e *Engine) handleTradesPostMatch(ctx context.Context, book *OrderBook, tra
 			if e.hub != nil {
 				e.hub.BroadcastAll("TRADE_EXECUTED", tradePayload)
 			}
+			_ = queue.PublishWSGlobalEvent(ctx, "TRADE_EXECUTED", tradePayload)
+		}
+
+		// Private notification to placing user if order matched
+		if incomingOrder != nil {
+			matchPayload := map[string]interface{}{
+				"type":         "ORDER_MATCHED",
+				"event":        "ORDER_MATCHED",
+				"order_id":     incomingOrder.ID.String(),
+				"event_symbol": incomingOrder.EventSymbol,
+				"symbol":       incomingOrder.EventSymbol,
+				"side":         incomingOrder.Side,
+				"price":        incomingOrder.Price,
+				"quantity":     incomingOrder.Quantity,
+				"trades_count": len(trades),
+				"timestamp":    time.Now().UTC(),
+			}
+			if e.hub != nil {
+				e.hub.BroadcastToUser(incomingOrder.UserID, "ORDER_MATCHED", matchPayload)
+			}
+			_ = queue.PublishWSEvent(ctx, incomingOrder.UserID, "ORDER_MATCHED", matchPayload)
+		}
+	} else {
+		// No match: order is resting on the book
+		if incomingOrder != nil {
+			restingPayload := map[string]interface{}{
+				"type":         "ORDER_RESTING",
+				"event":        "ORDER_RESTING",
+				"order_id":     incomingOrder.ID.String(),
+				"event_symbol": incomingOrder.EventSymbol,
+				"symbol":       incomingOrder.EventSymbol,
+				"side":         incomingOrder.Side,
+				"price":        incomingOrder.Price,
+				"quantity":     incomingOrder.Quantity,
+				"status":       "OPEN",
+				"message":      "Order resting in book and visible in Level-2 depth",
+				"timestamp":    time.Now().UTC(),
+			}
+			if e.hub != nil {
+				e.hub.BroadcastToUser(incomingOrder.UserID, "ORDER_RESTING", restingPayload)
+			}
+			_ = queue.PublishWSEvent(ctx, incomingOrder.UserID, "ORDER_RESTING", restingPayload)
 		}
 	}
 
@@ -342,6 +395,77 @@ func (e *Engine) handleTradesPostMatch(ctx context.Context, book *OrderBook, tra
 	if e.hub != nil {
 		e.hub.BroadcastAll("ORDER_BOOK_UPDATE", depth)
 		e.hub.BroadcastAll("ORDERBOOK_DEPTH_UPDATE", depth)
+	}
+	_ = queue.PublishWSGlobalEvent(ctx, "ORDER_BOOK_UPDATE", depth)
+	_ = queue.PublishWSGlobalEvent(ctx, "ORDERBOOK_DEPTH_UPDATE", depth)
+}
+
+// TriggerDrain prompts immediate in-memory queue drainage without waiting for network Pub/Sub round-trips
+func (e *Engine) TriggerDrain(symbol string) {
+	if e == nil {
+		return
+	}
+	go func() {
+		drainCtx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+		defer cancel()
+		e.drainAndMatchOrders(drainCtx, symbol)
+	}()
+}
+
+// StartPubSubMatchingTrigger subscribes to Redis Pub/Sub for event-driven matching triggers (0 CPU polling)
+func (e *Engine) StartPubSubMatchingTrigger(ctx context.Context) {
+	rdb := queue.GetRedisUniversalClient()
+	if rdb == nil {
+		log.Println("⚠️  [Engine PubSub Trigger] Redis client nil, PubSub matching trigger not started")
+		return
+	}
+
+	pubsub := rdb.Subscribe(ctx, ChannelEngineTrigger)
+	go func() {
+		defer pubsub.Close()
+		log.Println("⚡ [Engine PubSub Trigger] Subscribed to", ChannelEngineTrigger, "for zero-CPU event-driven matching")
+
+		ch := pubsub.Channel()
+		for {
+			select {
+			case <-ctx.Done():
+				return
+			case msg, ok := <-ch:
+				if !ok {
+					return
+				}
+				e.drainAndMatchOrders(ctx, msg.Payload)
+			}
+		}
+	}()
+}
+
+// drainAndMatchOrders pops all orders from the Redis queue and executes matching in RAM
+func (e *Engine) drainAndMatchOrders(ctx context.Context, triggerSymbol string) {
+	e.drainMu.Lock()
+	defer e.drainMu.Unlock()
+
+	rdb := queue.GetRedisUniversalClient()
+	if rdb == nil {
+		return
+	}
+
+	for {
+		orderBytes, err := rdb.RPop(ctx, QueueOrdersMatch).Bytes()
+		if err != nil || len(orderBytes) == 0 {
+			break
+		}
+
+		var order models.Order
+		if err := json.Unmarshal(orderBytes, &order); err != nil {
+			log.Printf("❌ [Engine Matching Queue] Failed to unmarshal order: %v", err)
+			continue
+		}
+
+		_, matchErr := e.ProcessOrder(ctx, &order)
+		if matchErr != nil {
+			log.Printf("⚠️  [Engine Match Error]: %v", matchErr)
+		}
 	}
 }
 
@@ -497,6 +621,22 @@ func (e *Engine) CancelOrder(ctx context.Context, orderID uuid.UUID, userID uuid
 			e.hub.BroadcastAll("ORDER_BOOK_UPDATE", depth)
 			e.hub.BroadcastAll("ORDERBOOK_DEPTH_UPDATE", depth)
 		}
+		_ = queue.PublishWSGlobalEvent(ctx, "ORDER_BOOK_UPDATE", depth)
+		_ = queue.PublishWSGlobalEvent(ctx, "ORDERBOOK_DEPTH_UPDATE", depth)
+
+		cancelPayload := map[string]interface{}{
+			"type":         "ORDER_CANCELLED",
+			"event":        "ORDER_CANCELLED",
+			"order_id":     order.ID.String(),
+			"event_symbol": order.EventSymbol,
+			"symbol":       order.EventSymbol,
+			"unfilled_qty": unfilledQty,
+			"timestamp":    time.Now().UTC(),
+		}
+		if e.hub != nil {
+			e.hub.BroadcastToUser(userID, "ORDER_CANCELLED", cancelPayload)
+		}
+		_ = queue.PublishWSEvent(ctx, userID, "ORDER_CANCELLED", cancelPayload)
 	}
 
 	order.Status = models.OrderStatusCancelled
