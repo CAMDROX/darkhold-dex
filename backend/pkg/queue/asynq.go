@@ -13,6 +13,7 @@ import (
 
 	"github.com/google/uuid"
 	"github.com/hibiken/asynq"
+	"github.com/joho/godotenv"
 	"github.com/redis/go-redis/v9"
 )
 
@@ -42,6 +43,9 @@ type WSEventBroadcast struct {
 // GetRedisConnOpt constructs the Redis connection options from environment variables.
 // Supports full connection URLs (REDIS_URL) or individual host/port/auth settings.
 func GetRedisConnOpt() asynq.RedisConnOpt {
+	_ = godotenv.Load(".env")
+	_ = godotenv.Load("../.env")
+
 	redisURL := os.Getenv("REDIS_URL")
 	if redisURL != "" {
 		opt, err := asynq.ParseRedisURI(redisURL)
@@ -86,12 +90,15 @@ func GetRedisConnOpt() asynq.RedisConnOpt {
 // GetRedisUniversalClient initializes or returns the shared go-redis client for Pub/Sub
 func GetRedisUniversalClient() redis.UniversalClient {
 	rdbOnce.Do(func() {
+		_ = godotenv.Load(".env")
+		_ = godotenv.Load("../.env")
+
 		redisURL := os.Getenv("REDIS_URL")
 		if redisURL != "" {
 			opt, err := redis.ParseURL(redisURL)
 			if err == nil {
 				globalRedisClient = redis.NewClient(opt)
-				log.Println("⚡ [Redis Client] Connected via REDIS_URL.")
+				log.Println("⚡ [Redis Client] Connected to Redis Cloud via REDIS_URL.")
 				return
 			}
 			log.Printf("⚠️  [Redis Client] ParseURL failed: %v", err)
