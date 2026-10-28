@@ -439,3 +439,83 @@ func dispatchResendEmail(apiKey string, reqBody ResendEmailRequest, emailType, r
 	log.Printf("📧 [Email Dispatched] Sent %s email to %s via Resend", emailType, recipientEmail)
 	return nil
 }
+
+
+// SendDutchAuctionNotificationEmail alerts buyers with active bids that a Dutch auction has started
+func SendDutchAuctionNotificationEmail(recipientEmail, username, eventName, eventSymbol string, startPrice, reservePrice float64, durationMinutes int) error {
+	apiKey := os.Getenv("RESEND_API_KEY")
+	fromEmail := os.Getenv("RESEND_FROM_EMAIL")
+	replyTo := os.Getenv("RESEND_REPLY_TO")
+
+	htmlContent := fmt.Sprintf(`
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <style>
+    body { background-color: #080706; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; color: #E5E0D8; margin: 0; padding: 24px; }
+    .card { max-width: 560px; margin: 0 auto; background: linear-gradient(145deg, #181412 0%%, #0D0B0A 100%%); border: 1px solid rgba(245, 158, 11, 0.4); border-radius: 16px; padding: 36px 32px; box-shadow: 0 10px 40px rgba(0,0,0,0.85); }
+    .header { text-align: center; margin-bottom: 24px; }
+    .badge { display: inline-block; background: rgba(245, 158, 11, 0.15); color: #F59E0B; border: 1px solid rgba(245, 158, 11, 0.4); font-size: 11px; font-weight: 800; letter-spacing: 2px; text-transform: uppercase; padding: 4px 12px; border-radius: 9999px; }
+    h1 { font-family: 'Georgia', serif; font-size: 24px; color: #FFFFFF; text-align: center; margin: 16px 0 8px 0; }
+    p { font-size: 14px; line-height: 1.6; color: #B8B2A6; margin: 0 0 16px 0; }
+    .auction-box { background: #080706; border: 1px solid rgba(245, 158, 11, 0.3); border-radius: 12px; padding: 20px; margin: 24px 0; }
+    .price-row { display: flex; justify-content: space-between; margin-bottom: 12px; font-size: 14px; }
+    .price-label { color: #A8A29E; }
+    .price-val { font-family: monospace; font-weight: 700; color: #F59E0B; font-size: 16px; }
+    .cta-btn { display: inline-block; background: #F59E0B; color: #080706; text-decoration: none; font-weight: 700; font-size: 14px; padding: 12px 28px; border-radius: 8px; text-transform: uppercase; letter-spacing: 1px; }
+    .footer { font-size: 11px; font-family: monospace; color: #78716C; text-align: center; border-top: 1px solid #292524; padding-top: 20px; margin-top: 28px; }
+  </style>
+</head>
+<body>
+  <div class="card">
+    <div class="header">
+      <span class="badge">DUTCH AUCTION ALERT</span>
+      <h1>Live Price-Decay Auction Started</h1>
+    </div>
+    <p>Greetings <strong>%s</strong>,</p>
+    <p>You have an active buy order in the <strong>%s (%s)</strong> market. A new ticket has just been listed in a <strong>Dutch Auction</strong>!</p>
+    
+    <div class="auction-box">
+      <div style="font-weight: 700; color: #FFFFFF; margin-bottom: 14px; font-size: 16px;">%s</div>
+      <div class="price-row">
+        <span class="price-label">Initial Starting Price:</span>
+        <span class="price-val">&#8377;%.2f</span>
+      </div>
+      <div class="price-row">
+        <span class="price-label">Floor Reserve Price:</span>
+        <span class="price-val" style="color: #10B981;">&#8377;%.2f</span>
+      </div>
+      <div class="price-row" style="margin-bottom: 0;">
+        <span class="price-label">Auction Duration:</span>
+        <span class="price-val" style="color: #E5E0D8;">%d Minutes</span>
+      </div>
+    </div>
+    
+    <p style="font-size: 13px; color: #F59E0B;">
+      &#9889; The price drops continuously in real-time until someone clicks <strong>Buy</strong>. First-come, first-served!
+    </p>
+
+    <div style="text-align: center; margin: 28px 0;">
+      <a href="http://localhost:5173/dashboard" class="cta-btn">Snipe Auction on Terminal &rarr;</a>
+    </div>
+
+    <div class="footer">
+      Automated dispatch from The Darkhold Exchange Protocol &middot; Event-Driven Trading<br/>
+      Liquidation Subsystem &middot; Immediate Settlement & QR Rotation Guarantee.
+    </div>
+  </div>
+</body>
+</html>
+`, username, eventName, eventSymbol, eventName, startPrice, reservePrice, durationMinutes)
+
+	reqBody := ResendEmailRequest{
+		From:    fromEmail,
+		To:      []string{recipientEmail},
+		ReplyTo: replyTo,
+		Subject: fmt.Sprintf("⚡ Dutch Auction Live: %s starting at ₹%.2f (Decaying)", eventSymbol, startPrice),
+		HTML:    htmlContent,
+	}
+
+	return dispatchResendEmail(apiKey, reqBody, "Dutch Auction Notification", recipientEmail)
+}

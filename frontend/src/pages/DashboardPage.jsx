@@ -23,6 +23,7 @@ import OrderEntryForm from '../components/trading/OrderEntryForm'
 import OrderBookDepth from '../components/trading/OrderBookDepth'
 import RecentTradesTape from '../components/trading/RecentTradesTape'
 import MyOrdersTable from '../components/trading/MyOrdersTable'
+import DutchAuctionFeed from '../components/trading/DutchAuctionFeed'
 import SimulatedDepositModal from '../components/SimulatedDepositModal'
 import ImportTicketModal from '../components/ImportTicketModal'
 import toast from 'react-hot-toast'
@@ -196,7 +197,6 @@ export default function DashboardPage() {
       const currentSymbol = (selectedEvent?.symbol || '').toUpperCase()
       if (!incomingSymbol || !currentSymbol || incomingSymbol === currentSymbol) {
         setTrades((prev) => [data, ...prev.slice(0, 49)])
-        // Refresh balances, inventory, and my orders when a trade matches
         fetchOrderBook()
         fetchUserBalances()
         fetchUserRelics()
@@ -361,6 +361,15 @@ export default function DashboardPage() {
           />
         </div>
       </div>
+
+      {/* 3b. Dutch Auction Price-Decay Liquidation Feed */}
+      <DutchAuctionFeed
+        selectedEvent={selectedEvent}
+        onBalanceRefresh={() => {
+          fetchUserBalances()
+          fetchUserRelics()
+        }}
+      />
 
       {/* 4. Bottom Section: Trader Active Orders & Historical Escrow Positions */}
       <MyOrdersTable

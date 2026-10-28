@@ -239,3 +239,26 @@ export const ordersApi = {
 }
 
 
+
+// Dutch Auction Price-Decay Subsystem Methods
+export const auctionsApi = {
+  createAuction: ({ relicId, eventSymbol, startPrice, reservePrice, durationSeconds }) =>
+    apiRequest('/api/auctions', {
+      method: 'POST',
+      body: JSON.stringify({
+        relic_id: relicId,
+        event_symbol: eventSymbol,
+        start_price: Number(startPrice),
+        reserve_price: Number(reservePrice),
+        duration_seconds: Number(durationSeconds),
+      }),
+    }),
+
+  getAuctions: (symbol = '') =>
+    apiRequest(`/api/auctions${symbol ? `?symbol=${symbol}` : ''}`),
+
+  snipeAuction: (auctionId) =>
+    apiRequest(`/api/auctions/${auctionId}/buy`, {
+      method: 'POST',
+    }),
+}
