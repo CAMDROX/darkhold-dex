@@ -129,30 +129,20 @@ func ImportTicket(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// ========================================================
-	// Enqueue Asynq Background Task (ticket:verify)
+	// Enqueue Background Task (ticket:verify) via Blocking Pop Queue
 	// ========================================================
-	task, err := queue.NewTicketVerifyTask(claims.UserID, req.EventSymbol, req.TicketID)
-	if err != nil {
-		log.Printf("❌ [Ticket Import Task Error]: %v", err)
-		writeTicketError(w, http.StatusInternalServerError, "Failed to construct background verification task", "TASK_CREATION_FAILED")
-		return
-	}
-
-	asynqClient := queue.GetClient()
 	enqueued := false
 	var taskID, queueName string
 
-	if asynqClient != nil {
-		info, err := asynqClient.EnqueueContext(r.Context(), task)
-		if err == nil {
-			enqueued = true
-			taskID = info.ID
-			queueName = info.Queue
-			log.Printf("🚀 [Ticket Import Enqueued] TaskID=%s Ticket=%s Event=%s UserID=%s",
-				info.ID, req.TicketID, req.EventSymbol, claims.UserID)
-		} else {
-			log.Printf("⚠️  [Ticket Import Asynq Notice]: %v, dispatching direct background worker", err)
-		}
+	tID, err := queue.EnqueueTicketVerify(r.Context(), claims.UserID, req.EventSymbol, req.TicketID)
+	if err == nil {
+		enqueued = true
+		taskID = tID
+		queueName = queue.QueueCritical
+		log.Printf("🚀 [Ticket Import Enqueued via Blocking Pop Queue] TaskID=%s Ticket=%s Event=%s UserID=%s",
+			taskID, req.TicketID, req.EventSymbol, claims.UserID)
+	} else {
+		log.Printf("⚠️  [Ticket Import Blocking Queue Notice]: %v, dispatching direct background worker fallback", err)
 	}
 
 	if !enqueued {

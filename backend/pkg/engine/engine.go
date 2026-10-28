@@ -178,7 +178,52 @@ func (e *Engine) LoadActiveOrdersFromDB(ctx context.Context) error {
 	}
 	e.mu.Unlock()
 
+	// Hydrate Redis ZSETs and snapshots for all active markets from resting orders
+	if rdb := queue.GetRedisUniversalClient(); rdb != nil {
+		e.mu.RLock()
+		for symbol, book := range e.books {
+			bidsKey := fmt.Sprintf("orderbook:%s:bids", symbol)
+			asksKey := fmt.Sprintf("orderbook:%s:asks", symbol)
+			_ = rdb.Del(ctx, bidsKey, asksKey).Err()
+
+			book.mu.RLock()
+			for _, node := range book.OrdersMap {
+				if node == nil || node.Order == nil {
+					continue
+				}
+				ord := node.Order
+				orderKey := fmt.Sprintf("order:%s", ord.ID.String())
+				if orderBytes, err := json.Marshal(ord); err == nil {
+					_ = rdb.Set(ctx, orderKey, orderBytes, 24*time.Hour).Err()
+				}
+				if ord.Side == models.SideBuy {
+					_ = rdb.ZAdd(ctx, bidsKey, redis.Z{Score: ord.Price, Member: ord.ID.String()}).Err()
+				} else {
+					_ = rdb.ZAdd(ctx, asksKey, redis.Z{Score: ord.Price, Member: ord.ID.String()}).Err()
+				}
+			}
+			book.mu.RUnlock()
+
+			depth := book.GetL2Depth(20)
+			SyncL2DepthToRedis(ctx, symbol, depth)
+		}
+		e.mu.RUnlock()
+		log.Println("⚡ [Engine Hydration] Synchronized Redis ZSET order books and L2 snapshots for active markets.")
+	}
+
 	return nil
+}
+
+// SyncL2DepthToRedis updates the cached Level-2 order book depth in Redis for instant query response
+func SyncL2DepthToRedis(ctx context.Context, symbol string, depth models.L2OrderBook) {
+	rdb := queue.GetRedisUniversalClient()
+	if rdb == nil {
+		return
+	}
+	snapshotKey := fmt.Sprintf("orderbook:%s:snapshot", symbol)
+	if bytes, err := json.Marshal(depth); err == nil {
+		_ = rdb.Set(ctx, snapshotKey, bytes, 24*time.Hour).Err()
+	}
 }
 
 // ProcessOrder matches an order and settles any resulting trades
@@ -229,33 +274,47 @@ func (e *Engine) ProcessOrder(ctx context.Context, order *models.Order) ([]*mode
 func (e *Engine) handleTradesPostMatch(ctx context.Context, book *OrderBook, trades []*models.Trade) {
 	rdb := queue.GetRedisUniversalClient()
 	if len(trades) > 0 {
-		asynqClient := queue.GetClient()
-		for _, trade := range trades {
-			// Remove matched orders from Redis ZSETs
-			if rdb != nil {
-				bidsKey := fmt.Sprintf("orderbook:%s:bids", trade.EventSymbol)
-				asksKey := fmt.Sprintf("orderbook:%s:asks", trade.EventSymbol)
-				_ = rdb.ZRem(ctx, bidsKey, trade.TakerOrderID.String(), trade.MakerOrderID.String()).Err()
-				_ = rdb.ZRem(ctx, asksKey, trade.TakerOrderID.String(), trade.MakerOrderID.String()).Err()
-			}
+		bidsKey := fmt.Sprintf("orderbook:%s:bids", book.EventSymbol)
+		asksKey := fmt.Sprintf("orderbook:%s:asks", book.EventSymbol)
 
-			// Enqueue into Asynq settlements queue
-			enqueued := false
-			if asynqClient != nil {
-				task, err := queue.NewTradeSettleTask(trade.MakerOrderID, trade.TakerOrderID, trade.Price, trade.Quantity, trade.EventSymbol)
-				if err == nil {
-					_, qErr := asynqClient.EnqueueContext(ctx, task)
-					if qErr == nil {
-						enqueued = true
-						log.Printf("🚀 [Asynq Settlements Queue] Trade settlement task enqueued: Maker=%s Taker=%s Price=%.2f",
-							trade.MakerOrderID, trade.TakerOrderID, trade.Price)
-					} else {
-						log.Printf("⚠️  [Asynq Enqueue Error]: %v", qErr)
+		for _, trade := range trades {
+			// Update Redis ZSETs and order records accurately
+			if rdb != nil {
+				// Taker order is completely matched/filled
+				_ = rdb.ZRem(ctx, bidsKey, trade.TakerOrderID.String()).Err()
+				_ = rdb.ZRem(ctx, asksKey, trade.TakerOrderID.String()).Err()
+				_ = rdb.Del(ctx, fmt.Sprintf("order:%s", trade.TakerOrderID.String())).Err()
+
+				// Check if maker order is still resting in book (partially filled)
+				book.mu.RLock()
+				makerNode, stillResting := book.OrdersMap[trade.MakerOrderID]
+				book.mu.RUnlock()
+
+				if stillResting && makerNode != nil && makerNode.Order != nil {
+					// Partially filled: update remaining order in Redis
+					if orderBytes, err := json.Marshal(makerNode.Order); err == nil {
+						_ = rdb.Set(ctx, fmt.Sprintf("order:%s", trade.MakerOrderID.String()), orderBytes, 24*time.Hour).Err()
 					}
+				} else {
+					// Fully filled: remove from ZSET and delete order cache
+					_ = rdb.ZRem(ctx, bidsKey, trade.MakerOrderID.String()).Err()
+					_ = rdb.ZRem(ctx, asksKey, trade.MakerOrderID.String()).Err()
+					_ = rdb.Del(ctx, fmt.Sprintf("order:%s", trade.MakerOrderID.String())).Err()
 				}
 			}
 
-			// Fallback direct execution if Asynq worker is offline
+			// Enqueue into event-driven Blocking Pop settlements queue
+			enqueued := false
+			taskID, qErr := queue.EnqueueTradeSettle(ctx, trade.MakerOrderID, trade.TakerOrderID, trade.Price, trade.Quantity, trade.EventSymbol)
+			if qErr == nil {
+				enqueued = true
+				log.Printf("🚀 [Blocking Settlements Queue] Trade settlement task enqueued (ID=%s): Maker=%s Taker=%s Price=%.2f",
+					taskID, trade.MakerOrderID, trade.TakerOrderID, trade.Price)
+			} else {
+				log.Printf("⚠️  [Blocking Queue Error]: %v, dispatching synchronous settlement fallback", qErr)
+			}
+
+			// Fallback direct execution if Redis queue is offline
 			if !enqueued && e.pool != nil {
 				_ = SettleTrades(ctx, e.pool, []*models.Trade{trade})
 			}
@@ -276,8 +335,10 @@ func (e *Engine) handleTradesPostMatch(ctx context.Context, book *OrderBook, tra
 		}
 	}
 
-	// Broadcast Level-2 Order Book Depth snapshot
+	// Broadcast & cache Level-2 Order Book Depth snapshot in Redis
 	depth := book.GetL2Depth(20)
+	SyncL2DepthToRedis(ctx, book.EventSymbol, depth)
+
 	if e.hub != nil {
 		e.hub.BroadcastAll("ORDER_BOOK_UPDATE", depth)
 		e.hub.BroadcastAll("ORDERBOOK_DEPTH_UPDATE", depth)
@@ -428,8 +489,10 @@ func (e *Engine) CancelOrder(ctx context.Context, orderID uuid.UUID, userID uuid
 			asksKey := fmt.Sprintf("orderbook:%s:asks", order.EventSymbol)
 			_ = rdb.ZRem(ctx, bidsKey, orderID.String()).Err()
 			_ = rdb.ZRem(ctx, asksKey, orderID.String()).Err()
+			_ = rdb.Del(ctx, fmt.Sprintf("order:%s", orderID.String())).Err()
 		}
 		depth := book.GetL2Depth(20)
+		SyncL2DepthToRedis(ctx, order.EventSymbol, depth)
 		if e.hub != nil {
 			e.hub.BroadcastAll("ORDER_BOOK_UPDATE", depth)
 			e.hub.BroadcastAll("ORDERBOOK_DEPTH_UPDATE", depth)

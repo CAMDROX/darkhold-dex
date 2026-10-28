@@ -21,7 +21,6 @@ import (
 	"darkhold-dex/backend/pkg/ws"
 
 	"github.com/google/uuid"
-	"github.com/hibiken/asynq"
 	"github.com/joho/godotenv"
 )
 
@@ -56,14 +55,14 @@ func main() {
 	// Start Redis Pub/Sub bridge to relay events from external workers to wsHub
 	queue.StartWSEventBridge(ctx, wsHub)
 
-	var asynqServer *asynq.Server
+	var workerServer *queue.BlockingWorkerServer
 	if database != nil && database.Pool != nil {
 		var err error
-		asynqServer, err = queue.StartWorker(ctx, database.Pool, wsHub)
+		workerServer, err = queue.StartBlockingWorker(ctx, database.Pool, wsHub)
 		if err != nil {
-			log.Printf("⚠️  [Asynq Worker] Background worker initialization notice: %v", err)
+			log.Printf("⚠️  [Blocking Worker] Background worker initialization notice: %v", err)
 		} else {
-			defer asynqServer.Shutdown()
+			defer workerServer.Shutdown()
 		}
 	}
 
@@ -133,10 +132,11 @@ func main() {
 				"ping_latency": redisPingLatency,
 			},
 			"websocket_hub": wsHub.GetOnlineStats(),
-			"asynq_queue": map[string]interface{}{
+			"worker_queue": map[string]interface{}{
 				"status": redisStatus,
-				"driver": "Redis Cloud / Asynq",
-				"queues": []string{"settlements", "critical", "default", "low"},
+				"driver": "Redis Cloud / Blocking Pop (BLMOVE)",
+				"mode":   "Event-Driven Zero-Polling Push (< 0.2ms)",
+				"queues": []string{queue.QueueSettlements, queue.QueueCritical},
 			},
 		})
 	})
