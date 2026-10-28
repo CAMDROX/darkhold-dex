@@ -63,43 +63,47 @@ export function WebSocketProvider({ children }) {
       }
 
       ws.onmessage = (event) => {
-        try {
-          const msg = JSON.parse(event.data)
-          setLastMessage(msg)
+        const rawData = typeof event.data === 'string' ? event.data : ''
+        const lines = rawData.split('\n').filter((l) => l.trim().length > 0)
+        for (const line of lines) {
+          try {
+            const msg = JSON.parse(line)
+            setLastMessage(msg)
 
-          // Disseminate to registered event listeners (support msg.event, msg.type, msg.data.type)
-          const matchedEvents = new Set([msg.event, msg.type, msg.data?.type, msg.data?.event].filter(Boolean))
-          matchedEvents.forEach((evtName) => {
-            if (subscribersRef.current.has(evtName)) {
-              subscribersRef.current.get(evtName).forEach((cb) => {
-                try {
-                  cb(msg.data || msg, msg)
-                } catch (err) {
-                  console.error('[WebSocket Callback Error]:', err)
-                }
-              })
-            }
-          })
-
-          // Global Handlers
-          if (msg.event === 'KYC_STATUS_UPDATED') {
-            const data = msg.data
-            if (user && data.user_id === user.id) {
-              if (data.kyc_status === 'verified') {
-                toast.success('🎉 Identity Verified! Full dark pool & escrow trading privileges unlocked.', {
-                  icon: '🛡️',
-                  duration: 6000,
-                })
-              } else if (data.kyc_status === 'unverified') {
-                toast.error(`⚠️ Verification Update: ${data.rejection_reason || 'Document could not be verified.'}`, {
-                  duration: 7000,
+            // Disseminate to registered event listeners (support msg.event, msg.type, msg.data.type)
+            const matchedEvents = new Set([msg.event, msg.type, msg.data?.type, msg.data?.event].filter(Boolean))
+            matchedEvents.forEach((evtName) => {
+              if (subscribersRef.current.has(evtName)) {
+                subscribersRef.current.get(evtName).forEach((cb) => {
+                  try {
+                    cb(msg.data || msg, msg)
+                  } catch (err) {
+                    console.error('[WebSocket Callback Error]:', err)
+                  }
                 })
               }
-              refreshUser()
+            })
+
+            // Global Handlers
+            if (msg.event === 'KYC_STATUS_UPDATED') {
+              const data = msg.data
+              if (user && data.user_id === user.id) {
+                if (data.kyc_status === 'verified') {
+                  toast.success('🎉 Identity Verified! Full dark pool & escrow trading privileges unlocked.', {
+                    icon: '🛡️',
+                    duration: 6000,
+                  })
+                } else if (data.kyc_status === 'unverified') {
+                  toast.error(`⚠️ Verification Update: ${data.rejection_reason || 'Document could not be verified.'}`, {
+                    duration: 7000,
+                  })
+                }
+                refreshUser()
+              }
             }
+          } catch (err) {
+            console.warn('[WebSocket Parse Warning]:', err)
           }
-        } catch (err) {
-          console.warn('[WebSocket Parse Warning]:', err)
         }
       }
 

@@ -8,10 +8,17 @@ const (
 	EventKYCSubmitted     = "KYC_SUBMITTED"
 	EventKYCStatusUpdated = "KYC_STATUS_UPDATED"
 
-	// Market & Order Book Events (For upcoming phases)
-	EventL2DepthDelta   = "L2_DEPTH_DELTA"
-	EventL2DepthSnapshot = "L2_DEPTH_SNAPSHOT"
-	EventTradeExecuted  = "TRADE_EXECUTED"
+	// Market & Order Book Events
+	EventL2DepthDelta         = "L2_DEPTH_DELTA"
+	EventL2DepthSnapshot      = "L2_DEPTH_SNAPSHOT"
+	EventTradeExecuted        = "TRADE_EXECUTED"
+	EventTradeSettled         = "TRADE_SETTLED"
+	EventOrderBookUpdate      = "ORDER_BOOK_UPDATE"
+	EventOrderBookDepthUpdate = "ORDERBOOK_DEPTH_UPDATE"
+	EventOrderPlaced          = "ORDER_PLACED"
+	EventOrderResting         = "ORDER_RESTING"
+	EventOrderMatched         = "ORDER_MATCHED"
+	EventOrderCancelled       = "ORDER_CANCELLED"
 
 	// Relic Inventory & Ticket Ingestion Events
 	EventTicketImported     = "TICKET_IMPORTED"

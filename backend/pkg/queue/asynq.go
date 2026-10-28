@@ -140,6 +140,11 @@ func PublishWSEvent(ctx context.Context, userID uuid.UUID, event string, data in
 	return rdb.Publish(ctx, ChannelWSEvents, bytes).Err()
 }
 
+// PublishWSGlobalEvent sends a public/global broadcast across Redis Pub/Sub to all connected clients
+func PublishWSGlobalEvent(ctx context.Context, event string, data interface{}) error {
+	return PublishWSEvent(ctx, uuid.Nil, event, data)
+}
+
 // StartWSEventBridge listens on Redis Pub/Sub and relays events to the local WebSocket hub
 func StartWSEventBridge(ctx context.Context, hub *ws.Hub) {
 	if hub == nil {
@@ -173,7 +178,11 @@ func StartWSEventBridge(ctx context.Context, hub *ws.Hub) {
 				// If event originated from a separate process (e.g. standalone worker),
 				// forward it to connected WebSocket clients in this server process
 				if b.SourcePID != os.Getpid() {
-					hub.BroadcastToUser(b.UserID, b.Event, b.Data)
+					if b.UserID == uuid.Nil {
+						hub.BroadcastAll(b.Event, b.Data)
+					} else {
+						hub.BroadcastToUser(b.UserID, b.Event, b.Data)
+					}
 				}
 			}
 		}

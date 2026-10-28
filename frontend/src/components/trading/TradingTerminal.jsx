@@ -89,11 +89,14 @@ export default function TradingTerminal({
   // 2. WebSocket Listener for ORDER_BOOK_UPDATE & TRADE_SETTLED
   useEffect(() => {
     // Public Level-2 Order Book Stream
-    const handleOrderBookUpdate = (data) => {
-      if (selectedEvent && data?.event_symbol === selectedEvent.symbol) {
-        setBids(data.bids || [])
-        setAsks(data.asks || [])
-        setSpread(data.spread || 0)
+    const handleOrderBookUpdate = (raw) => {
+      const data = raw?.data || raw
+      const incomingSymbol = (data?.event_symbol || data?.symbol || '').toUpperCase()
+      const currentSymbol = (selectedEvent?.symbol || '').toUpperCase()
+      if (!incomingSymbol || !currentSymbol || incomingSymbol === currentSymbol) {
+        setBids(Array.isArray(data?.bids) ? data.bids : [])
+        setAsks(Array.isArray(data?.asks) ? data.asks : [])
+        setSpread(data?.spread ?? 0)
       }
     }
 
@@ -127,12 +130,30 @@ export default function TradingTerminal({
       fetchOrderBook()
       onBalanceRefresh?.()
     })
+    const unsubCancel = subscribe('ORDER_CANCELLED', () => {
+      fetchOrderBook()
+      onBalanceRefresh?.()
+    })
+    const unsubMatched = subscribe('ORDER_MATCHED', (data) => {
+      toast.success(`⚡ Order Matched! Executing trade for ${data?.event_symbol || 'market'}...`, {
+        icon: '🏛️',
+        duration: 4000,
+      })
+      fetchOrderBook()
+      onBalanceRefresh?.()
+    })
+    const unsubResting = subscribe('ORDER_RESTING', () => {
+      fetchOrderBook()
+    })
 
     return () => {
       unsubBook1?.()
       unsubBook2?.()
       unsubSettle?.()
       unsubExec?.()
+      unsubCancel?.()
+      unsubMatched?.()
+      unsubResting?.()
     }
   }, [subscribe, selectedEvent, user?.id, onBalanceRefresh, fetchOrderBook])
 

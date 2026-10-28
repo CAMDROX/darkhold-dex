@@ -18,6 +18,7 @@ import (
 
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5"
+	"github.com/redis/go-redis/v9"
 )
 
 func writeOrderError(w http.ResponseWriter, status int, msg, code string) {
@@ -333,34 +334,61 @@ func PlaceOrder(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// ========================================================
-	// Step 5: Dispatch to In-Memory Matching Engine (< 0.5ms)
+	// Step 4: Publish to Redis ZSETs (Pre-Matching Shadow)
 	// ========================================================
-	var trades []*models.Trade
-	if engine.GlobalEngine != nil {
-		trades, err = engine.GlobalEngine.ProcessOrder(r.Context(), order)
-		if err != nil {
-			log.Printf("⚠️  [PlaceOrder Engine Notice]: %v", err)
+	rdb := queue.GetRedisUniversalClient()
+	if rdb != nil {
+		bidsKey := fmt.Sprintf("orderbook:%s:bids", order.EventSymbol)
+		asksKey := fmt.Sprintf("orderbook:%s:asks", order.EventSymbol)
+		orderKey := fmt.Sprintf("order:%s", order.ID.String())
+
+		if orderBytes, err := json.Marshal(order); err == nil {
+			_ = rdb.Set(ctx, orderKey, orderBytes, 24*time.Hour).Err()
+		}
+
+		if order.Side == models.SideBuy {
+			_ = rdb.ZAdd(ctx, bidsKey, redis.Z{Score: order.Price, Member: order.ID.String()}).Err()
+		} else {
+			_ = rdb.ZAdd(ctx, asksKey, redis.Z{Score: order.Price, Member: order.ID.String()}).Err()
 		}
 	}
 
-	// Fetch updated L2 order book
-	var l2Depth *models.L2OrderBook
-	if engine.GlobalEngine != nil {
-		d, err := engine.GlobalEngine.GetL2Depth(req.EventSymbol, 20)
-		if err == nil {
-			l2Depth = &d
+	// ========================================================
+	// Step 5: Enqueue to Redis & Fire Pub/Sub Trigger (Decoupled Async Matching)
+	// ========================================================
+	dispatched := false
+	if rdb != nil {
+		if orderBytes, err := json.Marshal(order); err == nil {
+			if qErr := rdb.LPush(ctx, engine.QueueOrdersMatch, orderBytes).Err(); qErr == nil {
+				_ = rdb.Publish(ctx, engine.ChannelEngineTrigger, order.EventSymbol).Err()
+				dispatched = true
+				log.Printf("🚀 [Decoupled Matching] Order %s queued in Redis and trigger published for %s", order.ID, order.EventSymbol)
+			} else {
+				log.Printf("⚠️  [Order Matching Queue LPush Error]: %v", qErr)
+			}
 		}
 	}
 
+	// Resilient fallback: if Redis offline, dispatch via background goroutine
+	if !dispatched && engine.GlobalEngine != nil {
+		go func() {
+			_, _ = engine.GlobalEngine.ProcessOrder(context.Background(), order)
+		}()
+	} else if engine.GlobalEngine != nil {
+		// Non-blocking immediate queue drainage in Go RAM (sub-millisecond instant matching)
+		engine.GlobalEngine.TriggerDrain(order.EventSymbol)
+	}
+
+	// ========================================================
+	// Step 6: Return HTTP 200 OK Immediately (Fast API Response)
+	// ========================================================
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(http.StatusOK)
 	_ = json.NewEncoder(w).Encode(models.PlaceOrderResponse{
 		Success: true,
 		Status:  string(order.Status),
-		Message: fmt.Sprintf("%s %s order placed successfully for %s", req.Side, req.OrderType, req.EventSymbol),
+		Message: fmt.Sprintf("%s %s order placed successfully and queued for matching for %s", req.Side, req.OrderType, req.EventSymbol),
 		Order:   order,
-		Trades:  trades,
-		L2Depth: l2Depth,
 	})
 }
 

@@ -666,6 +666,7 @@ func (ob *OrderBook) GetL2Depth(limit int) models.L2OrderBook {
 
 	return models.L2OrderBook{
 		EventSymbol: ob.EventSymbol,
+		Symbol:      ob.EventSymbol,
 		Bids:        bidLevels,
 		Asks:        askLevels,
 		Spread:      spread,

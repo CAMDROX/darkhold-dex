@@ -173,17 +173,31 @@ export default function DashboardPage() {
   // 7. Real-Time WebSocket Listeners
   useEffect(() => {
     // A: Real-Time Level 2 Order Book Depth Stream
-    const handleOrderBookUpdate = (data) => {
-      if (selectedEvent && data?.event_symbol === selectedEvent.symbol) {
-        setL2Data(data)
+    const handleOrderBookUpdate = (raw) => {
+      const data = raw?.data || raw
+      const incomingSymbol = (data?.event_symbol || data?.symbol || '').toUpperCase()
+      const currentSymbol = (selectedEvent?.symbol || '').toUpperCase()
+      if (!incomingSymbol || !currentSymbol || incomingSymbol === currentSymbol) {
+        setL2Data({
+          bids: Array.isArray(data?.bids) ? data.bids : [],
+          asks: Array.isArray(data?.asks) ? data.asks : [],
+          spread: data?.spread ?? 0,
+          best_bid: data?.best_bid ?? 0,
+          best_ask: data?.best_ask ?? 0,
+          ...data,
+        })
       }
     }
 
     // B: Real-Time Trade Execution Stream
-    const handleTradeExecuted = (data) => {
-      if (selectedEvent && data?.event_symbol === selectedEvent.symbol) {
+    const handleTradeExecuted = (raw) => {
+      const data = raw?.data || raw
+      const incomingSymbol = (data?.event_symbol || data?.symbol || '').toUpperCase()
+      const currentSymbol = (selectedEvent?.symbol || '').toUpperCase()
+      if (!incomingSymbol || !currentSymbol || incomingSymbol === currentSymbol) {
         setTrades((prev) => [data, ...prev.slice(0, 49)])
         // Refresh balances, inventory, and my orders when a trade matches
+        fetchOrderBook()
         fetchUserBalances()
         fetchUserRelics()
         fetchMyOrders()
@@ -200,18 +214,38 @@ export default function DashboardPage() {
       fetchUserRelics()
     }
 
-    const unsubDepth = subscribe('ORDERBOOK_DEPTH_UPDATE', handleOrderBookUpdate)
+    // E: Order Lifecycle & Settlement Updates
+    const handleOrderChange = () => {
+      fetchOrderBook()
+      fetchMyOrders()
+      fetchUserBalances()
+      fetchUserRelics()
+    }
+
+    const unsubDepth1 = subscribe('ORDERBOOK_DEPTH_UPDATE', handleOrderBookUpdate)
+    const unsubDepth2 = subscribe('ORDER_BOOK_UPDATE', handleOrderBookUpdate)
     const unsubTrade = subscribe('TRADE_EXECUTED', handleTradeExecuted)
+    const unsubSettle = subscribe('TRADE_SETTLED', handleOrderChange)
+    const unsubMatched = subscribe('ORDER_MATCHED', handleOrderChange)
+    const unsubResting = subscribe('ORDER_RESTING', handleOrderChange)
+    const unsubPlaced = subscribe('ORDER_PLACED', handleOrderChange)
+    const unsubCancelled = subscribe('ORDER_CANCELLED', handleOrderChange)
     const unsubDeposit = subscribe('DEPOSIT_SUCCESS', handleDepositSuccess)
     const unsubImport = subscribe('IMPORT_SUCCESS', handleImportSuccess)
 
     return () => {
-      unsubDepth?.()
+      unsubDepth1?.()
+      unsubDepth2?.()
       unsubTrade?.()
+      unsubSettle?.()
+      unsubMatched?.()
+      unsubResting?.()
+      unsubPlaced?.()
+      unsubCancelled?.()
       unsubDeposit?.()
       unsubImport?.()
     }
-  }, [subscribe, selectedEvent, fetchUserBalances, fetchUserRelics, fetchMyOrders])
+  }, [subscribe, selectedEvent, fetchOrderBook, fetchUserBalances, fetchUserRelics, fetchMyOrders])
 
   // Callbacks after user places or cancels order
   const handleOrderPlaced = () => {
