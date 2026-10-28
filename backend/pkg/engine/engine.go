@@ -144,11 +144,37 @@ func (e *Engine) LoadActiveOrdersFromDB(ctx context.Context) error {
 		}
 	}
 
-	// 2. Load open / partially filled resting orders
+	// 1b. Automatically cancel & release escrow for any lingering market orders in DB
+	// (Market orders are strictly Immediate-Or-Cancel and cannot rest across server boots)
+	staleMarketRows, sErr := e.pool.Query(ctx, `
+		SELECT id, user_id FROM public.orders
+		WHERE status IN ('OPEN', 'PARTIALLY_FILLED') AND order_type = 'MARKET'
+	`)
+	if sErr == nil {
+		type staleMarketOrder struct {
+			id  uuid.UUID
+			uid uuid.UUID
+		}
+		var stales []staleMarketOrder
+		for staleMarketRows.Next() {
+			var so staleMarketOrder
+			if err := staleMarketRows.Scan(&so.id, &so.uid); err == nil {
+				stales = append(stales, so)
+			}
+		}
+		staleMarketRows.Close()
+
+		for _, so := range stales {
+			log.Printf("⚡ [Engine Hydration] Cancelling lingering market order %s and releasing escrow...", so.id)
+			_, _ = e.CancelOrder(ctx, so.id, so.uid)
+		}
+	}
+
+	// 2. Load open / partially filled resting LIMIT orders only
 	orderRows, err := e.pool.Query(ctx, `
 		SELECT id, user_id, event_symbol, COALESCE(quote_currency, 'INR'), side, order_type, price, quantity, filled_quantity, status, created_at, updated_at
 		FROM public.orders
-		WHERE status IN ('OPEN', 'PARTIALLY_FILLED')
+		WHERE status IN ('OPEN', 'PARTIALLY_FILLED') AND order_type = 'LIMIT'
 		ORDER BY created_at ASC
 	`)
 	if err != nil {
@@ -164,7 +190,7 @@ func (e *Engine) LoadActiveOrdersFromDB(ctx context.Context) error {
 			&o.ID, &o.UserID, &o.EventSymbol, &o.QuoteCurrency, &o.Side, &o.OrderType,
 			&o.Price, &o.Quantity, &o.FilledQuantity, &o.Status, &o.CreatedAt, &o.UpdatedAt,
 		)
-		if err == nil {
+		if err == nil && o.OrderType == models.OrderTypeLimit {
 			book := e.GetOrCreateBook(o.EventSymbol, 0)
 			book.InsertRestingOrder(&o)
 			loadedCount++
@@ -247,9 +273,9 @@ func (e *Engine) ProcessOrder(ctx context.Context, order *models.Order) ([]*mode
 
 	book := e.GetOrCreateBook(order.EventSymbol, maxSellPrice)
 
-	// 1b. Sync with Redis ZSETs for in-memory order book
+	// 1b. Sync with Redis ZSETs for in-memory order book (Limit orders only)
 	rdb := queue.GetRedisUniversalClient()
-	if rdb != nil {
+	if rdb != nil && order.OrderType == models.OrderTypeLimit {
 		bidsKey := fmt.Sprintf("orderbook:%s:bids", order.EventSymbol)
 		asksKey := fmt.Sprintf("orderbook:%s:asks", order.EventSymbol)
 		orderKey := fmt.Sprintf("order:%s", order.ID.String())
@@ -366,8 +392,8 @@ func (e *Engine) handleTradesPostMatch(ctx context.Context, book *OrderBook, tra
 			_ = queue.PublishWSEvent(ctx, incomingOrder.UserID, "ORDER_MATCHED", matchPayload)
 		}
 	} else {
-		// No match: order is resting on the book
-		if incomingOrder != nil {
+		// No match: limit order is resting on the book
+		if incomingOrder != nil && incomingOrder.OrderType == models.OrderTypeLimit {
 			restingPayload := map[string]interface{}{
 				"type":         "ORDER_RESTING",
 				"event":        "ORDER_RESTING",
@@ -385,6 +411,20 @@ func (e *Engine) handleTradesPostMatch(ctx context.Context, book *OrderBook, tra
 				e.hub.BroadcastToUser(incomingOrder.UserID, "ORDER_RESTING", restingPayload)
 			}
 			_ = queue.PublishWSEvent(ctx, incomingOrder.UserID, "ORDER_RESTING", restingPayload)
+		}
+	}
+
+	// Market Order IOC (Immediate-Or-Cancel) Enforcement:
+	// Market orders cannot rest on the book. If any unfilled quantity remains, cancel it and release escrow!
+	if incomingOrder != nil && incomingOrder.OrderType == models.OrderTypeMarket && incomingOrder.UnfilledQuantity() > 0 {
+		unfilled := incomingOrder.UnfilledQuantity()
+		log.Printf("⚡ [Market Order IOC] Market order %s has %d unfilled contract(s). Cancelling remainder and releasing escrow.", incomingOrder.ID, unfilled)
+		if e.pool != nil {
+			go func(order models.Order) {
+				refundCtx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+				defer cancel()
+				_, _ = e.CancelOrder(refundCtx, order.ID, order.UserID)
+			}(*incomingOrder)
 		}
 	}
 
@@ -509,7 +549,6 @@ func (e *Engine) CancelOrder(ctx context.Context, orderID uuid.UUID, userID uuid
 	// 1. Release Locked Escrow in Database
 	if order.Side == models.SideBuy {
 		// Refund locked fiat
-		lockedAmount := float64(unfilledQty) * order.Price
 		escrowAccountID, err := getOrCreateAccount(ctx, tx, userID, order.QuoteCurrency, "ESCROW_LOCKED")
 		if err != nil {
 			return nil, err
@@ -517,6 +556,21 @@ func (e *Engine) CancelOrder(ctx context.Context, orderID uuid.UUID, userID uuid
 		availAccountID, err := getOrCreateAccount(ctx, tx, userID, order.QuoteCurrency, "AVAILABLE")
 		if err != nil {
 			return nil, err
+		}
+
+		lockedAmount := float64(unfilledQty) * order.Price
+		if lockedAmount <= 0 {
+			// If market order was placed with price 0, look up original locked amount from escrow ledger
+			var origLocked float64
+			_ = tx.QueryRow(ctx, `
+				SELECT COALESCE(SUM(le.amount), 0)
+				FROM public.ledger_entries le
+				JOIN public.transactions t ON t.id = le.transaction_id
+				WHERE t.reference_id = $1 AND t.transaction_type = 'ESCROW_LOCK' AND le.account_id = $2;
+			`, order.ID.String(), escrowAccountID).Scan(&origLocked)
+			if origLocked > 0 && order.Quantity > 0 {
+				lockedAmount = (origLocked / float64(order.Quantity)) * float64(unfilledQty)
+			}
 		}
 
 		var txnID uuid.UUID
