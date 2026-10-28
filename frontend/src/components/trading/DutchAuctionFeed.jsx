@@ -238,7 +238,7 @@ export default function DutchAuctionFeed({ selectedEvent, onBalanceRefresh }) {
                   <div className="absolute inset-0 bg-stone-950/80 backdrop-blur-xs flex items-center justify-center z-10">
                     <div className="flex items-center space-x-2 text-emerald-400 font-serif font-bold text-sm bg-emerald-950/90 border border-emerald-500/60 px-4 py-2 rounded-xl">
                       <CheckCircle2 className="w-4 h-4" />
-                      <span>Sniped at ₹{auc.clearing_price?.toFixed(2) || auc.current_price?.toFixed(2)}!</span>
+                      <span>Sniped at ₹{(auc.clearing_price != null ? Math.round(auc.clearing_price) : Math.round(auc.current_price || 0)).toLocaleString()}!</span>
                     </div>
                   </div>
                 )}
@@ -275,7 +275,7 @@ export default function DutchAuctionFeed({ selectedEvent, onBalanceRefresh }) {
                     </span>
                     <div className="flex items-baseline space-x-1">
                       <span className="text-xl font-bold font-mono text-amber-400">
-                        ₹{(auc.current_price || auc.start_price).toFixed(2)}
+                        ₹{Math.round(auc.current_price || auc.start_price || 0).toLocaleString()}
                       </span>
                       <TrendingDown className="w-3.5 h-3.5 text-amber-400/80 inline" />
                     </div>
@@ -283,10 +283,10 @@ export default function DutchAuctionFeed({ selectedEvent, onBalanceRefresh }) {
 
                   <div className="text-right text-[11px] font-mono text-stone-400 space-y-0.5">
                     <div>
-                      Start: <span className="text-stone-300 line-through">₹{auc.start_price.toFixed(2)}</span>
+                      Start: <span className="text-stone-300 line-through">₹{Math.round(auc.start_price || 0).toLocaleString()}</span>
                     </div>
                     <div>
-                      Floor: <span className="text-emerald-400 font-semibold">₹{auc.reserve_price.toFixed(2)}</span>
+                      Floor: <span className="text-emerald-400 font-semibold">₹{Math.round(auc.reserve_price || 0).toLocaleString()}</span>
                     </div>
                   </div>
                 </div>
@@ -313,7 +313,7 @@ export default function DutchAuctionFeed({ selectedEvent, onBalanceRefresh }) {
                   ) : (
                     <>
                       <Zap className="w-3.5 h-3.5 fill-current" />
-                      <span>Snipe at ₹{(auc.current_price || auc.start_price).toFixed(2)}</span>
+                      <span>Snipe at ₹{Math.round(auc.current_price || auc.start_price || 0).toLocaleString()}</span>
                     </>
                   )}
                 </button>

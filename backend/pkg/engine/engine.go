@@ -105,7 +105,7 @@ func InitGlobalEngine(pool *pgxpool.Pool, hub *ws.Hub) *Engine {
 }
 
 // GetOrCreateBook returns or registers an isolated market book for an event
-func (e *Engine) GetOrCreateBook(eventSymbol string, maxSellPrice float64) *OrderBook {
+func (e *Engine) GetOrCreateBook(eventSymbol string, maxSellPrice int64) *OrderBook {
 	e.mu.Lock()
 	defer e.mu.Unlock()
 
@@ -129,7 +129,7 @@ func (e *Engine) LoadActiveOrdersFromDB(ctx context.Context) error {
 
 	// 1. Pre-seed active events & dynamic price collars
 	rows, err := e.pool.Query(ctx, `
-		SELECT symbol, COALESCE(max_sell_price, 0.0)
+		SELECT symbol, COALESCE(max_sell_price, 0)
 		FROM public.events
 		WHERE status = 'ACTIVE'
 	`)
@@ -137,7 +137,7 @@ func (e *Engine) LoadActiveOrdersFromDB(ctx context.Context) error {
 		defer rows.Close()
 		for rows.Next() {
 			var symbol string
-			var maxPrice float64
+			var maxPrice int64
 			if err := rows.Scan(&symbol, &maxPrice); err == nil {
 				e.GetOrCreateBook(symbol, maxPrice)
 			}
@@ -232,9 +232,9 @@ func (e *Engine) LoadActiveOrdersFromDB(ctx context.Context) error {
 					_ = rdb.Set(ctx, orderKey, orderBytes, 24*time.Hour).Err()
 				}
 				if ord.Side == models.SideBuy {
-					_ = rdb.ZAdd(ctx, bidsKey, redis.Z{Score: ord.Price, Member: ord.ID.String()}).Err()
+					_ = rdb.ZAdd(ctx, bidsKey, redis.Z{Score: float64(ord.Price), Member: ord.ID.String()}).Err()
 				} else {
-					_ = rdb.ZAdd(ctx, asksKey, redis.Z{Score: ord.Price, Member: ord.ID.String()}).Err()
+					_ = rdb.ZAdd(ctx, asksKey, redis.Z{Score: float64(ord.Price), Member: ord.ID.String()}).Err()
 				}
 			}
 			book.mu.RUnlock()
@@ -266,7 +266,7 @@ func (e *Engine) ProcessOrder(ctx context.Context, order *models.Order) ([]*mode
 	start := time.Now()
 
 	// 1. Resolve event collar
-	var maxSellPrice float64
+	var maxSellPrice int64
 	if e.pool != nil {
 		_ = e.pool.QueryRow(ctx, "SELECT COALESCE(max_sell_price, 0) FROM public.events WHERE symbol = $1", order.EventSymbol).Scan(&maxSellPrice)
 	}
@@ -285,9 +285,9 @@ func (e *Engine) ProcessOrder(ctx context.Context, order *models.Order) ([]*mode
 		}
 
 		if order.Side == models.SideBuy {
-			_ = rdb.ZAdd(ctx, bidsKey, redis.Z{Score: order.Price, Member: order.ID.String()}).Err()
+			_ = rdb.ZAdd(ctx, bidsKey, redis.Z{Score: float64(order.Price), Member: order.ID.String()}).Err()
 		} else {
-			_ = rdb.ZAdd(ctx, asksKey, redis.Z{Score: order.Price, Member: order.ID.String()}).Err()
+			_ = rdb.ZAdd(ctx, asksKey, redis.Z{Score: float64(order.Price), Member: order.ID.String()}).Err()
 		}
 	}
 
@@ -343,7 +343,7 @@ func (e *Engine) handleTradesPostMatch(ctx context.Context, book *OrderBook, tra
 			taskID, qErr := queue.EnqueueTradeSettle(ctx, trade.MakerOrderID, trade.TakerOrderID, trade.Price, trade.Quantity, trade.EventSymbol)
 			if qErr == nil {
 				enqueued = true
-				log.Printf("🚀 [Blocking Settlements Queue] Trade settlement task enqueued (ID=%s): Maker=%s Taker=%s Price=%.2f",
+				log.Printf("🚀 [Blocking Settlements Queue] Trade settlement task enqueued (ID=%s): Maker=%s Taker=%s Price=%d",
 					taskID, trade.MakerOrderID, trade.TakerOrderID, trade.Price)
 			} else {
 				log.Printf("⚠️  [Blocking Queue Error]: %v, dispatching synchronous settlement fallback", qErr)
@@ -415,16 +415,19 @@ func (e *Engine) handleTradesPostMatch(ctx context.Context, book *OrderBook, tra
 	}
 
 	// Market Order IOC (Immediate-Or-Cancel) Enforcement:
-	// Market orders cannot rest on the book. If any unfilled quantity remains, cancel it and release escrow!
-	if incomingOrder != nil && incomingOrder.OrderType == models.OrderTypeMarket && incomingOrder.UnfilledQuantity() > 0 {
-		unfilled := incomingOrder.UnfilledQuantity()
-		log.Printf("⚡ [Market Order IOC] Market order %s has %d unfilled contract(s). Cancelling remainder and releasing escrow.", incomingOrder.ID, unfilled)
-		if e.pool != nil {
-			go func(order models.Order) {
-				refundCtx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
-				defer cancel()
-				_, _ = e.CancelOrder(refundCtx, order.ID, order.UserID)
-			}(*incomingOrder)
+	// If 0 matches: delete from public.orders and refund 100% of escrow.
+	// If partial match: update public.orders quantity to matched amount, refund unfilled escrow.
+	if incomingOrder != nil && incomingOrder.OrderType == models.OrderTypeMarket {
+		matchedQty := incomingOrder.FilledQuantity
+		unfilledQty := incomingOrder.UnfilledQuantity()
+		if len(trades) == 0 || unfilledQty > 0 {
+			if e.pool != nil {
+				go func(ord models.Order, matched, unfilled int) {
+					iocCtx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+					defer cancel()
+					_ = e.cancelMarketOrderIOC(iocCtx, &ord, matched, unfilled)
+				}(*incomingOrder, matchedQty, unfilledQty)
+			}
 		}
 	}
 
@@ -509,6 +512,152 @@ func (e *Engine) drainAndMatchOrders(ctx context.Context, triggerSymbol string) 
 	}
 }
 
+// cancelMarketOrderIOC enforces Model A (Immediate-Or-Cancel):
+// If 0 matches: deletes the order from public.orders, releases 100% of escrow, sends ORDER_CANCELLED.
+// If partial match: updates public.orders quantity to matched amount, releases unfilled escrow, sends notifications.
+func (e *Engine) cancelMarketOrderIOC(ctx context.Context, order *models.Order, matchedQty int, unfilledQty int) error {
+	if e.pool == nil || order == nil {
+		return nil
+	}
+
+	tx, err := e.pool.Begin(ctx)
+	if err != nil {
+		return err
+	}
+	defer tx.Rollback(ctx)
+
+	if matchedQty == 0 {
+		// 1. Delete completely unmatched market order from database
+		_, err = tx.Exec(ctx, "DELETE FROM public.orders WHERE id = $1", order.ID)
+		if err != nil {
+			log.Printf("⚠️  [Market IOC Delete Error]: %v", err)
+		}
+	} else {
+		// 2. Partially matched: update order tuple quantity to matched amount, status = FILLED
+		_, err = tx.Exec(ctx, `
+			UPDATE public.orders 
+			SET quantity = $1, filled_quantity = $1, status = 'FILLED', updated_at = NOW() 
+			WHERE id = $2;
+		`, matchedQty, order.ID)
+		if err != nil {
+			log.Printf("⚠️  [Market IOC Update Error]: %v", err)
+		}
+	}
+
+	// 3. Refund unfilled escrow back to trader's AVAILABLE account
+	if unfilledQty > 0 {
+		if order.Side == models.SideBuy {
+			escrowAccountID, err := getOrCreateAccount(ctx, tx, order.UserID, order.QuoteCurrency, "ESCROW_LOCKED")
+			if err == nil {
+				availAccountID, err := getOrCreateAccount(ctx, tx, order.UserID, order.QuoteCurrency, "AVAILABLE")
+				if err == nil {
+					var origLocked int64
+					_ = tx.QueryRow(ctx, `
+						SELECT COALESCE(SUM(le.amount), 0)
+						FROM public.ledger_entries le
+						JOIN public.transactions t ON t.id = le.transaction_id
+						WHERE t.reference_id = $1 AND t.transaction_type = 'ESCROW_LOCK' AND le.account_id = $2;
+					`, order.ID.String(), escrowAccountID).Scan(&origLocked)
+
+					refundAmount := int64(unfilledQty) * order.Price
+					if origLocked > 0 && order.Quantity > 0 {
+						refundAmount = (origLocked / int64(order.Quantity)) * int64(unfilledQty)
+					}
+
+					if refundAmount > 0 {
+						var txnID uuid.UUID
+						err = tx.QueryRow(ctx, `
+							INSERT INTO public.transactions (reference_id, transaction_type)
+							VALUES ($1, 'ESCROW_RELEASE')
+							RETURNING id;
+						`, order.ID.String()).Scan(&txnID)
+						if err == nil {
+							_, _ = tx.Exec(ctx, `
+								INSERT INTO public.ledger_entries (transaction_id, account_id, amount)
+								VALUES ($1, $2, $3), ($1, $4, $5);
+							`, txnID, escrowAccountID, -refundAmount, availAccountID, refundAmount)
+						}
+					}
+				}
+			}
+		} else {
+			// Sell order: unlock relic inventory tickets and ticket ledger balance
+			var eventID uuid.UUID
+			_ = tx.QueryRow(ctx, "SELECT id FROM public.events WHERE symbol = $1", order.EventSymbol).Scan(&eventID)
+
+			_, _ = tx.Exec(ctx, `
+				UPDATE public.relic_inventory
+				SET status = 'AVAILABLE', updated_at = NOW()
+				WHERE id IN (
+					SELECT id FROM public.relic_inventory
+					WHERE owner_id = $1 AND event_id = $2 AND status = 'ESCROW_LOCKED'
+					LIMIT $3
+				);
+			`, order.UserID, eventID, unfilledQty)
+
+			escrowTicketAccountID, err := getOrCreateAccount(ctx, tx, order.UserID, order.EventSymbol, "ESCROW_LOCKED")
+			if err == nil {
+				availTicketAccountID, err := getOrCreateAccount(ctx, tx, order.UserID, order.EventSymbol, "AVAILABLE")
+				if err == nil {
+					var txnID uuid.UUID
+					err = tx.QueryRow(ctx, `
+						INSERT INTO public.transactions (reference_id, transaction_type)
+						VALUES ($1, 'ESCROW_RELEASE')
+						RETURNING id;
+					`, order.ID.String()).Scan(&txnID)
+					if err == nil {
+						ticketQty := int64(unfilledQty)
+						_, _ = tx.Exec(ctx, `
+							INSERT INTO public.ledger_entries (transaction_id, account_id, amount)
+							VALUES ($1, $2, $3), ($1, $4, $5);
+						`, txnID, escrowTicketAccountID, -ticketQty, availTicketAccountID, ticketQty)
+					}
+				}
+			}
+		}
+	}
+
+	if err := tx.Commit(ctx); err != nil {
+		return err
+	}
+
+	// 4. WebSocket notifications
+	if matchedQty == 0 {
+		cancelPayload := map[string]interface{}{
+			"type":         "ORDER_CANCELLED",
+			"event":        "ORDER_CANCELLED",
+			"order_id":     order.ID.String(),
+			"event_symbol": order.EventSymbol,
+			"symbol":       order.EventSymbol,
+			"status":       "CANCELLED",
+			"message":      "Market order could not be matched against current order book and was cancelled (escrow fully refunded).",
+			"timestamp":    time.Now().UTC(),
+		}
+		if e.hub != nil {
+			e.hub.BroadcastToUser(order.UserID, "ORDER_CANCELLED", cancelPayload)
+		}
+		_ = queue.PublishWSEvent(ctx, order.UserID, "ORDER_CANCELLED", cancelPayload)
+	} else if unfilledQty > 0 {
+		partialPayload := map[string]interface{}{
+			"type":         "ORDER_PARTIALLY_FILLED_IOC",
+			"event":        "ORDER_CANCELLED",
+			"order_id":     order.ID.String(),
+			"event_symbol": order.EventSymbol,
+			"symbol":       order.EventSymbol,
+			"filled_qty":   matchedQty,
+			"unfilled_qty": unfilledQty,
+			"message":      fmt.Sprintf("Market order filled %d ticket(s). Remaining %d ticket(s) cancelled and escrow refunded.", matchedQty, unfilledQty),
+			"timestamp":    time.Now().UTC(),
+		}
+		if e.hub != nil {
+			e.hub.BroadcastToUser(order.UserID, "ORDER_CANCELLED", partialPayload)
+		}
+		_ = queue.PublishWSEvent(ctx, order.UserID, "ORDER_CANCELLED", partialPayload)
+	}
+
+	return nil
+}
+
 // CancelOrder handles removing resting order from book and releasing locked escrow in DB
 func (e *Engine) CancelOrder(ctx context.Context, orderID uuid.UUID, userID uuid.UUID) (*models.Order, error) {
 	if e.pool == nil {
@@ -558,10 +707,10 @@ func (e *Engine) CancelOrder(ctx context.Context, orderID uuid.UUID, userID uuid
 			return nil, err
 		}
 
-		lockedAmount := float64(unfilledQty) * order.Price
+		lockedAmount := int64(unfilledQty) * order.Price
 		if lockedAmount <= 0 {
 			// If market order was placed with price 0, look up original locked amount from escrow ledger
-			var origLocked float64
+			var origLocked int64
 			_ = tx.QueryRow(ctx, `
 				SELECT COALESCE(SUM(le.amount), 0)
 				FROM public.ledger_entries le
@@ -569,7 +718,7 @@ func (e *Engine) CancelOrder(ctx context.Context, orderID uuid.UUID, userID uuid
 				WHERE t.reference_id = $1 AND t.transaction_type = 'ESCROW_LOCK' AND le.account_id = $2;
 			`, order.ID.String(), escrowAccountID).Scan(&origLocked)
 			if origLocked > 0 && order.Quantity > 0 {
-				lockedAmount = (origLocked / float64(order.Quantity)) * float64(unfilledQty)
+				lockedAmount = (origLocked / int64(order.Quantity)) * int64(unfilledQty)
 			}
 		}
 
@@ -594,7 +743,7 @@ func (e *Engine) CancelOrder(ctx context.Context, orderID uuid.UUID, userID uuid
 		}
 	} else {
 		// Refund locked ticket
-		ticketQty := float64(unfilledQty)
+		ticketQty := int64(unfilledQty)
 		escrowTicketAccountID, err := getOrCreateAccount(ctx, tx, userID, order.EventSymbol, "ESCROW_LOCKED")
 		if err != nil {
 			return nil, err

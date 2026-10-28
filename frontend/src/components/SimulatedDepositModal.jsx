@@ -41,7 +41,7 @@ export default function SimulatedDepositModal({ isOpen, onClose, onSuccess }) {
     e?.preventDefault()
     setErrorMessage('')
 
-    const numericAmount = parseFloat(amount)
+    const numericAmount = Math.round(parseFloat(amount) || 0)
     if (isNaN(numericAmount) || numericAmount <= 0) {
       setErrorMessage('Please enter a valid deposit amount greater than 0.')
       return
@@ -247,7 +247,7 @@ export default function SimulatedDepositModal({ isOpen, onClose, onSuccess }) {
                   <input
                     type="number"
                     min="1"
-                    step="any"
+                    step="1"
                     value={amount}
                     onChange={(e) => setAmount(e.target.value)}
                     placeholder="Enter amount"

@@ -25,7 +25,7 @@ type TicketVerifyPayload struct {
 type TradeSettlePayload struct {
 	MakerOrderID uuid.UUID `json:"maker_order_id"`
 	TakerOrderID uuid.UUID `json:"taker_order_id"`
-	Price        float64   `json:"price"`
+	Price        int64     `json:"price"`
 	Quantity     int       `json:"quantity"`
 	EventSymbol  string    `json:"event_symbol"`
 }
@@ -51,7 +51,7 @@ func NewTicketVerifyTask(userID uuid.UUID, eventSymbol, ticketID string) (*asynq
 }
 
 // NewTradeSettleTask creates an Asynq task for atomic trade settlement in the 'settlements' queue
-func NewTradeSettleTask(makerOrderID, takerOrderID uuid.UUID, price float64, quantity int, eventSymbol string) (*asynq.Task, error) {
+func NewTradeSettleTask(makerOrderID, takerOrderID uuid.UUID, price int64, quantity int, eventSymbol string) (*asynq.Task, error) {
 	payload, err := json.Marshal(TradeSettlePayload{
 		MakerOrderID: makerOrderID,
 		TakerOrderID: takerOrderID,

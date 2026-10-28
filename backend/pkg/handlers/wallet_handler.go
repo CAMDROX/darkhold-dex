@@ -342,7 +342,7 @@ func SimulateDeposit(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	log.Printf("💰 [Fiat Deposit Committed] User=%s Amount=%.2f %s TxID=%s PaymentID=%s",
+	log.Printf("💰 [Fiat Deposit Committed] User=%s Amount=%d %s TxID=%s PaymentID=%s",
 		claims.UserID, req.Amount, req.Currency, transactionID, req.PaymentID)
 
 	// ========================================================
@@ -438,7 +438,7 @@ func GetWalletBalances(w http.ResponseWriter, r *http.Request) {
 			balances = append(balances, models.BalanceItem{
 				Currency:    c,
 				AccountType: "AVAILABLE",
-				Balance:     0.00,
+				Balance:     0,
 			})
 		}
 	}

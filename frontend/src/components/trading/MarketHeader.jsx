@@ -117,7 +117,7 @@ export default function MarketHeader({
             </span>
             <div className="flex items-center gap-2">
               <span className="text-white font-bold text-sm">
-                ₹{spread > 0 ? spread.toLocaleString() : '0.00'}
+                ₹{spread > 0 ? Math.round(spread).toLocaleString() : '0'}
               </span>
               <span className="text-[10px] text-[#A39B8E]">
                 ({bestBid > 0 ? `₹${bestBid}` : '-'} / {bestAsk > 0 ? `₹${bestAsk}` : '-'})

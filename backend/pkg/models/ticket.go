@@ -29,9 +29,9 @@ type Event struct {
 	Name                  string    `json:"name"`
 	Symbol                string    `json:"symbol"`
 	EventDate             time.Time `json:"event_date"`
-	FaceValue             float64   `json:"face_value"`
+	FaceValue             int64     `json:"face_value"`
 	MaxMarkupPercentage   float64   `json:"max_markup_percentage"`
-	MaxSellPrice          float64   `json:"max_sell_price"`
+	MaxSellPrice          int64     `json:"max_sell_price"`
 	ExternalPlatform      string    `json:"external_platform"`
 	VerificationAPIURL    *string   `json:"verification_api_url,omitempty"`
 	VerificationAPISecret *string   `json:"-"`
@@ -67,7 +67,7 @@ type LedgerEntry struct {
 	ID            uuid.UUID `json:"id"`
 	TransactionID uuid.UUID `json:"transaction_id"`
 	AccountID     uuid.UUID `json:"account_id"`
-	Amount        float64   `json:"amount"`
+	Amount        int64     `json:"amount"`
 	CreatedAt     time.Time `json:"created_at"`
 }
 

@@ -271,7 +271,7 @@ func SendKYCRejectedEmail(recipientEmail, username, reason string) error {
 }
 
 // SendTradeSettlementEmail dispatches a high-frequency trade confirmation receipt to buyer or seller
-func SendTradeSettlementEmail(recipientEmail, username, role, eventSymbol string, quantity int, price, totalAmount float64, tradeID, newQRHash string) error {
+func SendTradeSettlementEmail(recipientEmail, username, role, eventSymbol string, quantity int, price, totalAmount int64, tradeID, newQRHash string) error {
 	apiKey := os.Getenv("RESEND_API_KEY")
 	fromEmail := os.Getenv("RESEND_FROM_EMAIL")
 	replyTo := os.Getenv("RESEND_REPLY_TO")
@@ -281,14 +281,14 @@ func SendTradeSettlementEmail(recipientEmail, username, role, eventSymbol string
 	badgeColor := "#22C55E"
 	badgeBg := "rgba(34, 197, 94, 0.12)"
 	actionTitle := "Trade Execution Confirmed (Buy)"
-	subjectText := fmt.Sprintf("🎯 Trade Confirmed: Acquired %d %s Ticket(s) @ ₹%.2f — Darkhold DEX", quantity, eventSymbol, price)
+	subjectText := fmt.Sprintf("🎯 Trade Confirmed: Acquired %d %s Ticket(s) @ ₹%d — Darkhold DEX", quantity, eventSymbol, price)
 
 	if !isBuyer {
 		badgeText = "LIQUIDATED RELIC"
 		badgeColor = "#F59E0B"
 		badgeBg = "rgba(245, 158, 11, 0.12)"
 		actionTitle = "Trade Execution Confirmed (Sell)"
-		subjectText = fmt.Sprintf("💰 Trade Confirmed: Sold %d %s Ticket(s) @ ₹%.2f — Darkhold DEX", quantity, eventSymbol, price)
+		subjectText = fmt.Sprintf("💰 Trade Confirmed: Sold %d %s Ticket(s) @ ₹%d — Darkhold DEX", quantity, eventSymbol, price)
 	}
 
 	qrNotice := ""
@@ -308,7 +308,7 @@ func SendTradeSettlementEmail(recipientEmail, username, role, eventSymbol string
 		qrNotice = fmt.Sprintf(`
       <div style="background: rgba(34, 197, 94, 0.08); border: 1px dashed rgba(34, 197, 94, 0.4); border-radius: 10px; padding: 14px 16px; margin: 20px 0;">
         <div style="font-family: monospace; font-size: 11px; color: #86EFAC; font-weight: 700; letter-spacing: 1px;">💳 FIAT PROCEEDS CREDITED:</div>
-        <div style="font-family: monospace; font-size: 13px; color: #FFFFFF; margin-top: 4px;">₹%.2f credited to your AVAILABLE balance.</div>
+        <div style="font-family: monospace; font-size: 13px; color: #FFFFFF; margin-top: 4px;">₹%d credited to your AVAILABLE balance.</div>
         <div style="font-size: 11px; color: #A8A29E; margin-top: 4px;">Zero-sum double-entry ledger swap committed with 0 fees.</div>
       </div>
 `, totalAmount)
@@ -363,11 +363,11 @@ func SendTradeSettlementEmail(recipientEmail, username, role, eventSymbol string
       </tr>
       <tr>
         <td class="label">Execution Price</td>
-        <td class="val">₹%.2f</td>
+        <td class="val">₹%d</td>
       </tr>
       <tr class="total-row">
         <td class="label" style="color: #F5D061;">Total Settlement</td>
-        <td class="val">₹%.2f</td>
+        <td class="val">₹%d</td>
       </tr>
       <tr>
         <td class="label">Trade ID</td>
@@ -442,7 +442,7 @@ func dispatchResendEmail(apiKey string, reqBody ResendEmailRequest, emailType, r
 
 
 // SendDutchAuctionNotificationEmail alerts buyers with active bids that a Dutch auction has started
-func SendDutchAuctionNotificationEmail(recipientEmail, username, eventName, eventSymbol string, startPrice, reservePrice float64, durationMinutes int) error {
+func SendDutchAuctionNotificationEmail(recipientEmail, username, eventName, eventSymbol string, startPrice, reservePrice int64, durationMinutes int) error {
 	apiKey := os.Getenv("RESEND_API_KEY")
 	fromEmail := os.Getenv("RESEND_FROM_EMAIL")
 	replyTo := os.Getenv("RESEND_REPLY_TO")
@@ -480,11 +480,11 @@ func SendDutchAuctionNotificationEmail(recipientEmail, username, eventName, even
       <div style="font-weight: 700; color: #FFFFFF; margin-bottom: 14px; font-size: 16px;">%s</div>
       <div class="price-row">
         <span class="price-label">Initial Starting Price:</span>
-        <span class="price-val">&#8377;%.2f</span>
+        <span class="price-val">&#8377;%d</span>
       </div>
       <div class="price-row">
         <span class="price-label">Floor Reserve Price:</span>
-        <span class="price-val" style="color: #10B981;">&#8377;%.2f</span>
+        <span class="price-val" style="color: #10B981;">&#8377;%d</span>
       </div>
       <div class="price-row" style="margin-bottom: 0;">
         <span class="price-label">Auction Duration:</span>
@@ -513,7 +513,7 @@ func SendDutchAuctionNotificationEmail(recipientEmail, username, eventName, even
 		From:    fromEmail,
 		To:      []string{recipientEmail},
 		ReplyTo: replyTo,
-		Subject: fmt.Sprintf("⚡ Dutch Auction Live: %s starting at ₹%.2f (Decaying)", eventSymbol, startPrice),
+		Subject: fmt.Sprintf("⚡ Dutch Auction Live: %s starting at ₹%d (Decaying)", eventSymbol, startPrice),
 		HTML:    htmlContent,
 	}
 

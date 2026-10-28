@@ -53,7 +53,7 @@ export default function OrderEntryForm({
   // Real-time dynamic anti-scalper collar check
   useEffect(() => {
     if (orderType === 'LIMIT' && maxSellPrice > 0) {
-      const numPrice = parseFloat(price)
+      const numPrice = Math.round(parseFloat(price) || 0)
       if (!isNaN(numPrice) && numPrice > maxSellPrice) {
         setCollarError(
           `Collar Ceiling Breach: Price cannot exceed ₹${maxSellPrice.toLocaleString()} (Face value ₹${faceValue.toLocaleString()} + Dynamic Markup)`
@@ -66,7 +66,7 @@ export default function OrderEntryForm({
     }
   }, [price, orderType, maxSellPrice, faceValue])
 
-  const numPrice = parseFloat(price) || 0
+  const numPrice = Math.round(parseFloat(price) || 0)
   const numQty = parseInt(quantity, 10) || 0
   const totalAmount = orderType === 'LIMIT' ? numPrice * numQty : maxSellPrice * numQty
 
@@ -222,7 +222,8 @@ export default function OrderEntryForm({
               </span>
               <input
                 type="number"
-                step="any"
+                step="1"
+                min="1"
                 disabled={orderType === 'MARKET'}
                 value={orderType === 'MARKET' ? maxSellPrice : price}
                 onChange={(e) => setPrice(e.target.value)}

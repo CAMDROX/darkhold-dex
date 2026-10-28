@@ -159,7 +159,7 @@ export default function MyOrdersTable({
                     </td>
 
                     <td className="py-3 px-3 text-right font-bold text-white">
-                      ₹{order.price ? order.price.toLocaleString() : '0.00'}
+                      ₹{order.price ? Math.round(order.price).toLocaleString() : '0'}
                     </td>
 
                     <td className="py-3 px-3 text-right text-[#C0B7A8]">

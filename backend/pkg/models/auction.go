@@ -22,10 +22,10 @@ type DutchAuction struct {
 	RelicID         uuid.UUID     `json:"relic_id"`
 	EventSymbol     string        `json:"event_symbol"`
 	EventName       string        `json:"event_name,omitempty"`
-	StartPrice      float64       `json:"start_price"`
-	ReservePrice    float64       `json:"reserve_price"`
-	CurrentPrice    float64       `json:"current_price"`
-	ClearingPrice   *float64      `json:"clearing_price,omitempty"`
+	StartPrice      int64         `json:"start_price"`
+	ReservePrice    int64         `json:"reserve_price"`
+	CurrentPrice    int64         `json:"current_price"`
+	ClearingPrice   *int64        `json:"clearing_price,omitempty"`
 	DurationSeconds int           `json:"duration_seconds"`
 	BuyerID         *uuid.UUID    `json:"buyer_id,omitempty"`
 	BuyerUsername   string        `json:"buyer_username,omitempty"`
@@ -43,8 +43,8 @@ type DutchAuction struct {
 type CreateAuctionRequest struct {
 	RelicID         uuid.UUID `json:"relic_id"`
 	EventSymbol     string    `json:"event_symbol"`
-	StartPrice      float64   `json:"start_price"`
-	ReservePrice    float64   `json:"reserve_price"`
+	StartPrice      int64     `json:"start_price"`
+	ReservePrice    int64     `json:"reserve_price"`
 	DurationSeconds int       `json:"duration_seconds"`
 }
 
@@ -53,7 +53,7 @@ type SnipeAuctionResponse struct {
 	Status        string    `json:"status"`
 	AuctionID     uuid.UUID `json:"auction_id"`
 	EventSymbol   string    `json:"event_symbol"`
-	ClearingPrice float64   `json:"clearing_price"`
+	ClearingPrice int64     `json:"clearing_price"`
 	RelicID       uuid.UUID `json:"relic_id"`
 	BuyerID       uuid.UUID `json:"buyer_id"`
 	SettledAt     time.Time `json:"settled_at"`

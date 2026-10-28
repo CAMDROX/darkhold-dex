@@ -79,7 +79,7 @@ func CreateDutchAuction(w http.ResponseWriter, r *http.Request) {
 	// 2. Validate Dynamic Price Collar ($P_start <= max_sell_price)
 	var eventID uuid.UUID
 	var eventName string
-	var faceValue, maxSellPrice float64
+	var faceValue, maxSellPrice int64
 	err = db.GlobalDB.Pool.QueryRow(ctx, `
 		SELECT id, name, face_value, max_sell_price
 		FROM public.events
@@ -92,7 +92,7 @@ func CreateDutchAuction(w http.ResponseWriter, r *http.Request) {
 
 	if maxSellPrice > 0 && req.StartPrice > maxSellPrice {
 		writeOrderError(w, http.StatusUnprocessableEntity,
-			fmt.Sprintf("COLLAR_BREACH: Starting price ₹%.2f exceeds the anti-scalping ceiling of ₹%.2f for %s (Face value ₹%.2f)",
+			fmt.Sprintf("COLLAR_BREACH: Starting price ₹%d exceeds the anti-scalping ceiling of ₹%d for %s (Face value ₹%d)",
 				req.StartPrice, maxSellPrice, req.EventSymbol, faceValue),
 			"422_COLLAR_BREACH")
 		return
@@ -170,8 +170,8 @@ func CreateDutchAuction(w http.ResponseWriter, r *http.Request) {
 	_, err = tx.Exec(ctx, `
 		INSERT INTO public.ledger_entries (transaction_id, account_id, amount)
 		VALUES 
-			($1, $2, -1.0),
-			($1, $3, 1.0);
+			($1, $2, -1),
+			($1, $3, 1);
 	`, txnID, sellerAvailTicketAccountID, sellerLockedTicketAccountID)
 	if err != nil {
 		writeOrderError(w, http.StatusInternalServerError, "Failed to update ledger balances", "LEDGER_ERROR")
@@ -235,7 +235,7 @@ func CreateDutchAuction(w http.ResponseWriter, r *http.Request) {
 }
 
 // dispatchAuctionEmailsToBuyers queries all active buyers for this symbol and alerts them
-func dispatchAuctionEmailsToBuyers(eventSymbol, eventName string, startPrice, reservePrice float64, durationMinutes int, sellerID uuid.UUID) {
+func dispatchAuctionEmailsToBuyers(eventSymbol, eventName string, startPrice, reservePrice int64, durationMinutes int, sellerID uuid.UUID) {
 	if db.GlobalDB == nil || db.GlobalDB.Pool == nil {
 		return
 	}
@@ -362,7 +362,7 @@ func SnipeDutchAuction(w http.ResponseWriter, r *http.Request) {
 		RelicID:       auc.RelicID,
 		BuyerID:       claims.UserID,
 		SettledAt:     time.Now().UTC(),
-		Message:       fmt.Sprintf("Congratulations! You sniped the ticket at ₹%.2f. The QR code has been rotated and delivered to your Vault.", clearingPrice),
+		Message:       fmt.Sprintf("Congratulations! You sniped the ticket at ₹%d. The QR code has been rotated and delivered to your Vault.", clearingPrice),
 	})
 }
 

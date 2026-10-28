@@ -393,7 +393,7 @@ func (w *TicketWorker) ProcessTicketVerifyInternal(ctx context.Context, payload 
 	// ========================================================
 	// 4. WebSocket Notification (Guaranteed Delivery)
 	// ========================================================
-	var currentBalance float64
+	var currentBalance int64
 	_ = w.pool.QueryRow(ctx, `
 		SELECT COALESCE(SUM(amount), 0)
 		FROM public.ledger_entries
@@ -486,7 +486,7 @@ func (w *TicketWorker) HandleTradeSettlement(ctx context.Context, t *asynq.Task)
 
 // HandleTradeSettlementInternal executes atomic trade settlement logic
 func (w *TicketWorker) HandleTradeSettlementInternal(ctx context.Context, payload TradeSettlePayload) error {
-	log.Printf("🏛️  [Trade Settlement Worker] Processing settlement: Maker=%s Taker=%s Event=%s Price=%.2f Qty=%d",
+	log.Printf("🏛️  [Trade Settlement Worker] Processing settlement: Maker=%s Taker=%s Event=%s Price=%d Qty=%d",
 		payload.MakerOrderID, payload.TakerOrderID, payload.EventSymbol, payload.Price, payload.Quantity)
 
 	if w.pool == nil {
@@ -502,7 +502,7 @@ func (w *TicketWorker) HandleTradeSettlementInternal(ctx context.Context, payloa
 	// 1. Fetch Maker and Taker order details
 	var makerUserID, takerUserID uuid.UUID
 	var makerSide, takerSide string
-	var makerPrice, takerPrice float64
+	var makerPrice, takerPrice int64
 	var quoteCurrency string
 
 	err = tx.QueryRow(ctx, `
@@ -522,7 +522,7 @@ func (w *TicketWorker) HandleTradeSettlementInternal(ctx context.Context, payloa
 	}
 
 	var buyerID, sellerID uuid.UUID
-	var buyerLimitPrice float64
+	var buyerLimitPrice int64
 
 	if makerSide == "BUY" {
 		buyerID = makerUserID
@@ -642,7 +642,7 @@ func (w *TicketWorker) HandleTradeSettlementInternal(ctx context.Context, payloa
 	}
 
 	// Swap Fiat: Buyer's locked fiat -> Seller's available fiat
-	totalFiat := payload.Price * float64(payload.Quantity)
+	totalFiat := payload.Price * int64(payload.Quantity)
 	_, err = tx.Exec(ctx, `
 		INSERT INTO public.ledger_entries (transaction_id, account_id, amount)
 		VALUES 
@@ -654,7 +654,7 @@ func (w *TicketWorker) HandleTradeSettlementInternal(ctx context.Context, payloa
 	}
 
 	// Swap Ticket: Seller's locked ticket -> Buyer's available ticket
-	totalTickets := float64(payload.Quantity)
+	totalTickets := int64(payload.Quantity)
 	_, err = tx.Exec(ctx, `
 		INSERT INTO public.ledger_entries (transaction_id, account_id, amount)
 		VALUES 
@@ -667,7 +667,7 @@ func (w *TicketWorker) HandleTradeSettlementInternal(ctx context.Context, payloa
 
 	// Refund buyer excess locked fiat if buyer's limit price > trade execution price
 	if buyerLimitPrice > payload.Price {
-		excessRefund := (buyerLimitPrice - payload.Price) * float64(payload.Quantity)
+		excessRefund := (buyerLimitPrice - payload.Price) * int64(payload.Quantity)
 		if excessRefund > 0 {
 			_, err = tx.Exec(ctx, `
 				INSERT INTO public.ledger_entries (transaction_id, account_id, amount)
@@ -685,7 +685,7 @@ func (w *TicketWorker) HandleTradeSettlementInternal(ctx context.Context, payloa
 		return fmt.Errorf("failed to commit settlement transaction: %w", err)
 	}
 
-	log.Printf("🏛️  [Trade Settlement Complete] Trade %s settled! Fiat: ₹%.2f, Relic transferred & QR rotated.",
+	log.Printf("🏛️  [Trade Settlement Complete] Trade %s settled! Fiat: ₹%d, Relic transferred & QR rotated.",
 		tradeID, totalFiat)
 
 	// 8. WebSocket Notifications to both users' private channels
@@ -710,7 +710,7 @@ func (w *TicketWorker) HandleTradeSettlementInternal(ctx context.Context, payloa
 		w.hub.BroadcastAll("TRADE_EXECUTED", settleData)
 		w.hub.BroadcastAll("TRADE_SETTLED", settleData)
 		if w.pool != nil {
-			go func(bID, sID uuid.UUID, evtSymbol string, qty int, prc, tot float64, trdID, qrHash string) {
+			go func(bID, sID uuid.UUID, evtSymbol string, qty int, prc, tot int64, trdID, qrHash string) {
 				var bEmail, bUsername, sEmail, sUsername string
 				_ = w.pool.QueryRow(context.Background(), "SELECT email, username FROM public.users WHERE id = $1", bID).Scan(&bEmail, &bUsername)
 				_ = w.pool.QueryRow(context.Background(), "SELECT email, username FROM public.users WHERE id = $1", sID).Scan(&sEmail, &sUsername)

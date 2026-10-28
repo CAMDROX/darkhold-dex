@@ -169,7 +169,7 @@ export default function TradingTerminal({
       return
     }
 
-    const numPrice = parseFloat(price)
+    const numPrice = Math.round(parseFloat(price) || 0)
     const numQty = parseInt(quantity, 10)
 
     if (isNaN(numPrice) || numPrice <= 0) {
@@ -273,10 +273,11 @@ export default function TradingTerminal({
                 </span>
                 <input
                   type="number"
-                  step="any"
+                  step="1"
+                  min="1"
                   value={price}
                   onChange={(e) => setPrice(e.target.value)}
-                  placeholder="0.00"
+                  placeholder="0"
                   className={`w-full bg-[#120F0D] border rounded-xl py-2.5 pl-8 pr-4 text-white font-mono text-sm focus:outline-none transition-all ${
                     collarError
                       ? 'border-[#EF4444] text-[#EF4444] focus:ring-1 focus:ring-[#EF4444]'
@@ -338,7 +339,7 @@ export default function TradingTerminal({
               <div className="flex items-center justify-between text-[#8E867A]">
                 <span>Order Total:</span>
                 <span className="text-white font-bold">
-                  ₹{((parseFloat(price) || 0) * (parseInt(quantity, 10) || 1)).toLocaleString()}
+                  ₹{(Math.round(parseFloat(price) || 0) * (parseInt(quantity, 10) || 1)).toLocaleString()}
                 </span>
               </div>
               <div className="flex items-center gap-1.5 text-[10px] text-[#A8A195] pt-1 border-t border-[#1C1613]">

@@ -120,7 +120,7 @@ func PlaceOrder(w http.ResponseWriter, r *http.Request) {
 	// Step 2: Validate Event & Anti-Scalper Dynamic Price Collar
 	// ========================================================
 	var eventID uuid.UUID
-	var faceValue, maxSellPrice float64
+	var faceValue, maxSellPrice int64
 	err = db.GlobalDB.Pool.QueryRow(ctx, `
 		SELECT id, face_value, max_sell_price
 		FROM public.events
@@ -139,7 +139,7 @@ func PlaceOrder(w http.ResponseWriter, r *http.Request) {
 	// Anti-Scalper Dynamic Collar Gate (< 0.1ms)
 	if req.OrderType == string(models.OrderTypeLimit) && maxSellPrice > 0 && req.Price > maxSellPrice {
 		writeOrderError(w, http.StatusUnprocessableEntity,
-			fmt.Sprintf("COLLAR_BREACH: Requested limit price ₹%.2f exceeds the anti-scalping ceiling of ₹%.2f for %s (pinned to face value ₹%.2f). Predatory markup rejected.",
+			fmt.Sprintf("COLLAR_BREACH: Requested limit price ₹%d exceeds the anti-scalping ceiling of ₹%d for %s (pinned to face value ₹%d). Predatory markup rejected.",
 				req.Price, maxSellPrice, req.EventSymbol, faceValue),
 			"422_COLLAR_BREACH")
 		return
@@ -164,7 +164,7 @@ func PlaceOrder(w http.ResponseWriter, r *http.Request) {
 		if req.OrderType == string(models.OrderTypeMarket) {
 			effectivePrice = maxSellPrice // Escrow capped maximum for market order
 		}
-		requiredFiat := effectivePrice * float64(req.Quantity)
+		requiredFiat := effectivePrice * int64(req.Quantity)
 
 		// Check buyer available balance
 		buyerAvailAccountID, err := getOrCreateAccountInTx(ctx, tx, claims.UserID, req.QuoteCurrency, "AVAILABLE")
@@ -173,7 +173,7 @@ func PlaceOrder(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 
-		var currentBalance float64
+		var currentBalance int64
 		_ = tx.QueryRow(ctx, `
 			SELECT COALESCE(SUM(amount), 0)
 			FROM public.ledger_entries
@@ -182,7 +182,7 @@ func PlaceOrder(w http.ResponseWriter, r *http.Request) {
 
 		if currentBalance < requiredFiat {
 			writeOrderError(w, http.StatusBadRequest,
-				fmt.Sprintf("Insufficient available balance: You need ₹%.2f %s to place this buy order, but your available balance is ₹%.2f.",
+				fmt.Sprintf("Insufficient available balance: You need ₹%d %s to place this buy order, but your available balance is ₹%d.",
 					requiredFiat, req.QuoteCurrency, currentBalance),
 				"INSUFFICIENT_FUNDS")
 			return
@@ -283,7 +283,7 @@ func PlaceOrder(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 
-		ticketQty := float64(req.Quantity)
+		ticketQty := int64(req.Quantity)
 		_, err = tx.Exec(ctx, `
 			INSERT INTO public.ledger_entries (transaction_id, account_id, amount)
 			VALUES 
@@ -352,9 +352,9 @@ func PlaceOrder(w http.ResponseWriter, r *http.Request) {
 		}
 
 		if order.Side == models.SideBuy {
-			_ = rdb.ZAdd(ctx, bidsKey, redis.Z{Score: order.Price, Member: order.ID.String()}).Err()
+			_ = rdb.ZAdd(ctx, bidsKey, redis.Z{Score: float64(order.Price), Member: order.ID.String()}).Err()
 		} else {
-			_ = rdb.ZAdd(ctx, asksKey, redis.Z{Score: order.Price, Member: order.ID.String()}).Err()
+			_ = rdb.ZAdd(ctx, asksKey, redis.Z{Score: float64(order.Price), Member: order.ID.String()}).Err()
 		}
 	}
 

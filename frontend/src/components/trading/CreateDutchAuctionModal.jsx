@@ -59,15 +59,15 @@ export default function CreateDutchAuctionModal({
 
     // Pre-populate sensible prices
     if (faceValue > 0) {
-      setStartPrice(maxSellPrice > 0 ? (maxSellPrice * 0.95).toFixed(2) : (faceValue * 1.2).toFixed(2))
-      setReservePrice((faceValue * 0.8).toFixed(2))
+      setStartPrice(maxSellPrice > 0 ? String(Math.round(maxSellPrice * 0.95)) : String(Math.round(faceValue * 1.2)))
+      setReservePrice(String(Math.round(faceValue * 0.8)))
     }
   }, [isOpen, selectedEvent, faceValue, maxSellPrice])
 
   // Validate dynamic collar
   useEffect(() => {
-    const sPrice = parseFloat(startPrice)
-    const rPrice = parseFloat(reservePrice)
+    const sPrice = Math.round(parseFloat(startPrice) || 0)
+    const rPrice = Math.round(parseFloat(reservePrice) || 0)
 
     if (maxSellPrice > 0 && sPrice > maxSellPrice) {
       setCollarError(`Starting price cannot exceed the dynamic collar cap of ₹${maxSellPrice}`)
@@ -86,8 +86,8 @@ export default function CreateDutchAuctionModal({
       toast.error('Please select an available ticket to auction')
       return
     }
-    const numStart = parseFloat(startPrice)
-    const numReserve = parseFloat(reservePrice)
+    const numStart = Math.round(parseFloat(startPrice) || 0)
+    const numReserve = Math.round(parseFloat(reservePrice) || 0)
 
     if (isNaN(numStart) || isNaN(numReserve) || numStart <= 0 || numReserve <= 0) {
       toast.error('Please provide valid positive prices')
@@ -202,12 +202,12 @@ export default function CreateDutchAuctionModal({
                   <span className="absolute left-3 top-2 text-stone-500 font-mono text-xs">₹</span>
                   <input
                     type="number"
-                    step="0.01"
+                    step="1"
                     min="1"
                     value={startPrice}
                     onChange={(e) => setStartPrice(e.target.value)}
                     className="w-full pl-7 pr-3 py-2 bg-stone-950 border border-stone-800 rounded-lg text-xs font-mono text-amber-200 focus:outline-hidden focus:border-amber-500"
-                    placeholder="150.00"
+                    placeholder="150"
                     required
                   />
                 </div>
@@ -224,12 +224,12 @@ export default function CreateDutchAuctionModal({
                   <span className="absolute left-3 top-2 text-stone-500 font-mono text-xs">₹</span>
                   <input
                     type="number"
-                    step="0.01"
+                    step="1"
                     min="1"
                     value={reservePrice}
                     onChange={(e) => setReservePrice(e.target.value)}
                     className="w-full pl-7 pr-3 py-2 bg-stone-950 border border-stone-800 rounded-lg text-xs font-mono text-emerald-300 focus:outline-hidden focus:border-emerald-500"
-                    placeholder="80.00"
+                    placeholder="80"
                     required
                   />
                 </div>
@@ -278,7 +278,7 @@ export default function CreateDutchAuctionModal({
                 <div className="flex justify-between text-stone-400 text-[11px]">
                   <span>Midpoint price ({durationMinutes / 2}m):</span>
                   <span className="text-amber-300">
-                    ₹{((parseFloat(startPrice) + parseFloat(reservePrice)) / 2).toFixed(2)}
+                    ₹{Math.round((parseFloat(startPrice) + parseFloat(reservePrice)) / 2).toLocaleString()}
                   </span>
                 </div>
               </div>
