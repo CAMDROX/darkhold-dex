@@ -1,4 +1,4 @@
-# Dependencies
+﻿# Dependencies
 node_modules/
 frontend/node_modules/
 
@@ -24,3 +24,12 @@ frontend/.env
 .DS_Store
 Thumbs.db
 
+
+.gocache/
+.gopath/
+backend/.gocache/
+backend/.gopath/
+.gocache/
+.gopath/
+backend/.gocache/
+backend/.gopath/

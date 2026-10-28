@@ -12,6 +12,7 @@ import (
 	"strings"
 	"time"
 
+	"darkhold-dex/backend/pkg/email"
 	"darkhold-dex/backend/pkg/ws"
 
 	"github.com/google/uuid"
@@ -61,13 +62,28 @@ func (w *TicketWorker) notifyUser(ctx context.Context, userID uuid.UUID, event s
 // 2. Evaluates verification response
 // 3. Executes atomic double-entry pgx transaction
 // 4. Guarantees WebSocket notification on BOTH success and failure
+// ProcessTicketVerify processes the ticket:verify Asynq task
 func (w *TicketWorker) ProcessTicketVerify(ctx context.Context, t *asynq.Task) error {
 	var payload TicketVerifyPayload
 	if err := json.Unmarshal(t.Payload(), &payload); err != nil {
 		log.Printf("❌ [Ticket Worker] Unmarshal payload failed: %v", err)
 		return fmt.Errorf("json.Unmarshal failed: %v: %w", err, asynq.SkipRetry)
 	}
+	return w.ProcessTicketVerifyInternal(ctx, payload)
+}
 
+// ProcessTicketVerifyDirect allows executing ticket verification directly in an event-driven Go goroutine with zero Redis dependency
+func ProcessTicketVerifyDirect(ctx context.Context, pool *pgxpool.Pool, hub *ws.Hub, payload TicketVerifyPayload) error {
+	w := NewTicketWorker(pool, hub)
+	return w.ProcessTicketVerifyInternal(ctx, payload)
+}
+
+// ProcessTicketVerifyInternal processes the ticket verification logic:
+// 1. Simulates organizer API delay (800ms)
+// 2. Evaluates verification response
+// 3. Executes atomic double-entry pgx transaction
+// 4. Guarantees WebSocket notification on BOTH success and failure
+func (w *TicketWorker) ProcessTicketVerifyInternal(ctx context.Context, payload TicketVerifyPayload) error {
 	log.Printf("⏳ [Ticket Worker Active] Verifying ticket: Barcode=%s Event=%s User=%s",
 		payload.TicketID, payload.EventSymbol, payload.UserID)
 
@@ -689,6 +705,19 @@ func (w *TicketWorker) HandleTradeSettlement(ctx context.Context, t *asynq.Task)
 	if w.hub != nil {
 		w.hub.BroadcastAll("TRADE_EXECUTED", settleData)
 		w.hub.BroadcastAll("TRADE_SETTLED", settleData)
+		if w.pool != nil {
+			go func(bID, sID uuid.UUID, evtSymbol string, qty int, prc, tot float64, trdID, qrHash string) {
+				var bEmail, bUsername, sEmail, sUsername string
+				_ = w.pool.QueryRow(context.Background(), "SELECT email, username FROM public.users WHERE id = $1", bID).Scan(&bEmail, &bUsername)
+				_ = w.pool.QueryRow(context.Background(), "SELECT email, username FROM public.users WHERE id = $1", sID).Scan(&sEmail, &sUsername)
+				if bEmail != "" {
+					_ = email.SendTradeSettlementEmail(bEmail, bUsername, "BUYER", evtSymbol, qty, prc, tot, trdID, qrHash)
+				}
+				if sEmail != "" {
+					_ = email.SendTradeSettlementEmail(sEmail, sUsername, "SELLER", evtSymbol, qty, prc, tot, trdID, "")
+				}
+			}(buyerID, sellerID, payload.EventSymbol, payload.Quantity, payload.Price, totalFiat, tradeID.String(), newQRHash)
+		}
 	}
 
 	return nil

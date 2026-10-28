@@ -14,6 +14,7 @@ import (
 	"darkhold-dex/backend/pkg/middleware"
 	"darkhold-dex/backend/pkg/models"
 	"darkhold-dex/backend/pkg/queue"
+	"darkhold-dex/backend/pkg/ws"
 
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5"
@@ -138,22 +139,37 @@ func ImportTicket(w http.ResponseWriter, r *http.Request) {
 	}
 
 	asynqClient := queue.GetClient()
-	if asynqClient == nil {
-		writeTicketError(w, http.StatusServiceUnavailable, "Background task queue unavailable", "QUEUE_UNAVAILABLE")
-		return
+	enqueued := false
+	var taskID, queueName string
+
+	if asynqClient != nil {
+		info, err := asynqClient.EnqueueContext(r.Context(), task)
+		if err == nil {
+			enqueued = true
+			taskID = info.ID
+			queueName = info.Queue
+			log.Printf("🚀 [Ticket Import Enqueued] TaskID=%s Ticket=%s Event=%s UserID=%s",
+				info.ID, req.TicketID, req.EventSymbol, claims.UserID)
+		} else {
+			log.Printf("⚠️  [Ticket Import Asynq Notice]: %v, dispatching direct background worker", err)
+		}
 	}
 
-	info, err := asynqClient.EnqueueContext(r.Context(), task)
-	if err != nil {
-		log.Printf("❌ [Ticket Import Enqueue Error]: %v", err)
-		writeTicketError(w, http.StatusServiceUnavailable,
-			"Failed to enqueue ticket for verification. Ensure Redis is connected.",
-			"QUEUE_ENQUEUE_FAILED")
-		return
+	if !enqueued {
+		taskID = uuid.New().String()
+		queueName = "in-memory"
+		go func() {
+			bgCtx, cancel := context.WithTimeout(context.Background(), 2*time.Minute)
+			defer cancel()
+			_ = queue.ProcessTicketVerifyDirect(bgCtx, db.GlobalDB.Pool, ws.GlobalHub, queue.TicketVerifyPayload{
+				UserID:      claims.UserID,
+				EventSymbol: req.EventSymbol,
+				TicketID:    req.TicketID,
+			})
+		}()
+		log.Printf("🚀 [Ticket Import Dispatched Direct] TaskID=%s Ticket=%s Event=%s UserID=%s",
+			taskID, req.TicketID, req.EventSymbol, claims.UserID)
 	}
-
-	log.Printf("🚀 [Ticket Import Enqueued] TaskID=%s Ticket=%s Event=%s UserID=%s",
-		info.ID, req.TicketID, req.EventSymbol, claims.UserID)
 
 	// ========================================================
 	// Return HTTP 202 Accepted
@@ -166,8 +182,8 @@ func ImportTicket(w http.ResponseWriter, r *http.Request) {
 		"message":      "Verification queued",
 		"ticket_id":    req.TicketID,
 		"event_symbol": req.EventSymbol,
-		"task_id":      info.ID,
-		"queue":        info.Queue,
+		"task_id":      taskID,
+		"queue":        queueName,
 		"timestamp":    time.Now().UTC(),
 	})
 }

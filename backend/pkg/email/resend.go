@@ -41,9 +41,7 @@ type ResendEmailResponse struct {
 // SendVerificationEmail dispatches a 6-digit OTP using the Resend API
 func SendVerificationEmail(recipientEmail, username, otp string) error {
 	apiKey := os.Getenv("RESEND_API_KEY")
-
 	fromEmail := os.Getenv("RESEND_FROM_EMAIL")
-
 	replyTo := os.Getenv("RESEND_REPLY_TO")
 
 	htmlContent := fmt.Sprintf(`
@@ -53,7 +51,7 @@ func SendVerificationEmail(recipientEmail, username, otp string) error {
   <meta charset="utf-8">
   <style>
     body { background-color: #080706; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; color: #E5E0D8; margin: 0; padding: 24px; }
-    .card { max-width: 540px; margin: 0 auto; background: linear-gradient(145deg, #181412 0%, #0D0B0A 100%); border: 1px solid rgba(212, 175, 55, 0.3); border-radius: 16px; padding: 36px 32px; box-shadow: 0 10px 30px rgba(0,0,0,0.8); }
+    .card { max-width: 540px; margin: 0 auto; background: linear-gradient(145deg, #181412 0%%, #0D0B0A 100%%); border: 1px solid rgba(212, 175, 55, 0.3); border-radius: 16px; padding: 36px 32px; box-shadow: 0 10px 30px rgba(0,0,0,0.8); }
     .logo { text-align: center; margin-bottom: 24px; }
     .brand { font-family: 'Georgia', serif; font-size: 22px; font-weight: 900; letter-spacing: 3px; color: #F5D061; text-transform: uppercase; }
     .tag { font-family: monospace; font-size: 11px; letter-spacing: 1px; color: #EF4444; margin-top: 4px; }
@@ -147,7 +145,7 @@ func SendKYCApprovedEmail(recipientEmail, username string) error {
   <meta charset="utf-8">
   <style>
     body { background-color: #080706; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; color: #E5E0D8; margin: 0; padding: 24px; }
-    .card { max-width: 560px; margin: 0 auto; background: linear-gradient(145deg, #181412 0%, #0D0B0A 100%); border: 1px solid rgba(34, 197, 94, 0.4); border-radius: 16px; padding: 36px 32px; box-shadow: 0 10px 40px rgba(0,0,0,0.85); }
+    .card { max-width: 560px; margin: 0 auto; background: linear-gradient(145deg, #181412 0%%, #0D0B0A 100%%); border: 1px solid rgba(34, 197, 94, 0.4); border-radius: 16px; padding: 36px 32px; box-shadow: 0 10px 40px rgba(0,0,0,0.85); }
     .logo { text-align: center; margin-bottom: 24px; }
     .brand { font-family: 'Georgia', serif; font-size: 22px; font-weight: 900; letter-spacing: 3px; color: #F5D061; text-transform: uppercase; }
     .tag { font-family: monospace; font-size: 11px; letter-spacing: 1px; color: #22C55E; margin-top: 4px; }
@@ -218,7 +216,7 @@ func SendKYCRejectedEmail(recipientEmail, username, reason string) error {
   <meta charset="utf-8">
   <style>
     body { background-color: #080706; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; color: #E5E0D8; margin: 0; padding: 24px; }
-    .card { max-width: 560px; margin: 0 auto; background: linear-gradient(145deg, #181412 0%, #0D0B0A 100%); border: 1px solid rgba(239, 68, 68, 0.4); border-radius: 16px; padding: 36px 32px; box-shadow: 0 10px 40px rgba(0,0,0,0.85); }
+    .card { max-width: 560px; margin: 0 auto; background: linear-gradient(145deg, #181412 0%%, #0D0B0A 100%%); border: 1px solid rgba(239, 68, 68, 0.4); border-radius: 16px; padding: 36px 32px; box-shadow: 0 10px 40px rgba(0,0,0,0.85); }
     .logo { text-align: center; margin-bottom: 24px; }
     .brand { font-family: 'Georgia', serif; font-size: 22px; font-weight: 900; letter-spacing: 3px; color: #F5D061; text-transform: uppercase; }
     .tag { font-family: monospace; font-size: 11px; letter-spacing: 1px; color: #EF4444; margin-top: 4px; }
@@ -270,6 +268,137 @@ func SendKYCRejectedEmail(recipientEmail, username, reason string) error {
 	}
 
 	return dispatchResendEmail(apiKey, reqBody, "KYC Rejection", recipientEmail)
+}
+
+// SendTradeSettlementEmail dispatches a high-frequency trade confirmation receipt to buyer or seller
+func SendTradeSettlementEmail(recipientEmail, username, role, eventSymbol string, quantity int, price, totalAmount float64, tradeID, newQRHash string) error {
+	apiKey := os.Getenv("RESEND_API_KEY")
+	fromEmail := os.Getenv("RESEND_FROM_EMAIL")
+	replyTo := os.Getenv("RESEND_REPLY_TO")
+
+	isBuyer := role == "BUYER"
+	badgeText := "ACQUIRED RELIC"
+	badgeColor := "#22C55E"
+	badgeBg := "rgba(34, 197, 94, 0.12)"
+	actionTitle := "Trade Execution Confirmed (Buy)"
+	subjectText := fmt.Sprintf("🎯 Trade Confirmed: Acquired %d %s Ticket(s) @ ₹%.2f — Darkhold DEX", quantity, eventSymbol, price)
+
+	if !isBuyer {
+		badgeText = "LIQUIDATED RELIC"
+		badgeColor = "#F59E0B"
+		badgeBg = "rgba(245, 158, 11, 0.12)"
+		actionTitle = "Trade Execution Confirmed (Sell)"
+		subjectText = fmt.Sprintf("💰 Trade Confirmed: Sold %d %s Ticket(s) @ ₹%.2f — Darkhold DEX", quantity, eventSymbol, price)
+	}
+
+	qrNotice := ""
+	if isBuyer && newQRHash != "" {
+		truncatedHash := newQRHash
+		if len(truncatedHash) > 16 {
+			truncatedHash = truncatedHash[:16] + "..."
+		}
+		qrNotice = fmt.Sprintf(`
+      <div style="background: rgba(212, 175, 55, 0.08); border: 1px dashed rgba(212, 175, 55, 0.4); border-radius: 10px; padding: 14px 16px; margin: 20px 0;">
+        <div style="font-family: monospace; font-size: 11px; color: #F5D061; font-weight: 700; letter-spacing: 1px;">🔐 CRYPTOGRAPHIC QR ROTATED:</div>
+        <div style="font-family: monospace; font-size: 12px; color: #E5E0D8; margin-top: 4px; word-break: break-all;">Internal Hash: <code>%s</code></div>
+        <div style="font-size: 11px; color: #A8A29E; margin-top: 4px;">Seller's previous barcode screenshot has been permanently invalidated.</div>
+      </div>
+`, truncatedHash)
+	} else if !isBuyer {
+		qrNotice = fmt.Sprintf(`
+      <div style="background: rgba(34, 197, 94, 0.08); border: 1px dashed rgba(34, 197, 94, 0.4); border-radius: 10px; padding: 14px 16px; margin: 20px 0;">
+        <div style="font-family: monospace; font-size: 11px; color: #86EFAC; font-weight: 700; letter-spacing: 1px;">💳 FIAT PROCEEDS CREDITED:</div>
+        <div style="font-family: monospace; font-size: 13px; color: #FFFFFF; margin-top: 4px;">₹%.2f credited to your AVAILABLE balance.</div>
+        <div style="font-size: 11px; color: #A8A29E; margin-top: 4px;">Zero-sum double-entry ledger swap committed with 0 fees.</div>
+      </div>
+`, totalAmount)
+	}
+
+	htmlContent := fmt.Sprintf(`
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <style>
+    body { background-color: #080706; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; color: #E5E0D8; margin: 0; padding: 24px; }
+    .card { max-width: 580px; margin: 0 auto; background: linear-gradient(145deg, #181412 0%%, #0D0B0A 100%%); border: 1px solid rgba(212, 175, 55, 0.35); border-radius: 16px; padding: 36px 32px; box-shadow: 0 12px 40px rgba(0,0,0,0.9); }
+    .logo { text-align: center; margin-bottom: 24px; }
+    .brand { font-family: 'Georgia', serif; font-size: 22px; font-weight: 900; letter-spacing: 3px; color: #F5D061; text-transform: uppercase; }
+    .tag { font-family: monospace; font-size: 11px; letter-spacing: 1px; color: #EF4444; margin-top: 4px; }
+    h1 { font-family: 'Georgia', serif; font-size: 22px; color: #FFFFFF; text-align: center; margin: 0 0 16px 0; }
+    p { font-size: 14px; line-height: 1.6; color: #B8B2A6; margin: 0 0 16px 0; }
+    .badge { display: inline-block; background: %s; color: %s; font-family: monospace; font-size: 11px; font-weight: 800; letter-spacing: 1.5px; padding: 5px 12px; border-radius: 20px; border: 1px solid %s; margin-bottom: 12px; text-transform: uppercase; }
+    .receipt-table { width: 100%%; border-collapse: collapse; margin: 20px 0; background: #0E0C0B; border: 1px solid #241E19; border-radius: 10px; overflow: hidden; }
+    .receipt-table td { padding: 12px 16px; font-size: 13px; border-bottom: 1px solid #1C1814; }
+    .receipt-table td.label { color: #8A8275; font-family: monospace; text-transform: uppercase; font-size: 11px; width: 40%%; }
+    .receipt-table td.val { color: #FFFFFF; font-family: monospace; font-weight: 600; text-align: right; }
+    .total-row td { background: rgba(212, 175, 55, 0.08); font-size: 15px !important; font-weight: 800 !important; color: #F5D061 !important; border-bottom: none; }
+    .cta-btn { display: inline-block; background: linear-gradient(90deg, #D4AF37 0%%, #F5D061 100%%); color: #080706; text-decoration: none; font-weight: 800; font-family: monospace; font-size: 13px; letter-spacing: 1px; padding: 14px 28px; border-radius: 10px; text-transform: uppercase; margin: 10px 0; }
+    .footer { font-size: 11px; font-family: monospace; color: #736B5E; text-align: center; border-top: 1px solid #241E19; padding-top: 20px; margin-top: 28px; }
+  </style>
+</head>
+<body>
+  <div class="card">
+    <div class="logo">
+      <div class="brand">THE DARKHOLD EXCHANGE</div>
+      <div class="tag">SETTLEMENT RECEIPT // TRADE MATCHED</div>
+    </div>
+    
+    <div style="text-align: center;">
+      <span class="badge">%s</span>
+      <h1>%s</h1>
+    </div>
+
+    <p>Greetings <strong>%s</strong>,</p>
+    <p>Your limit/market order on the high-frequency secondary book has matched and atomically settled with zero-sum ledger balance guarantees.</p>
+
+    <table class="receipt-table">
+      <tr>
+        <td class="label">Event Market</td>
+        <td class="val">%s</td>
+      </tr>
+      <tr>
+        <td class="label">Quantity</td>
+        <td class="val">%d Ticket(s)</td>
+      </tr>
+      <tr>
+        <td class="label">Execution Price</td>
+        <td class="val">₹%.2f</td>
+      </tr>
+      <tr class="total-row">
+        <td class="label" style="color: #F5D061;">Total Settlement</td>
+        <td class="val">₹%.2f</td>
+      </tr>
+      <tr>
+        <td class="label">Trade ID</td>
+        <td class="val" style="font-size: 11px; color: #A8A29E;">%s</td>
+      </tr>
+    </table>
+
+    %s
+
+    <div style="text-align: center; margin: 24px 0;">
+      <a href="http://localhost:5173/dashboard" class="cta-btn">View Order Book & Vault &rarr;</a>
+    </div>
+
+    <div class="footer">
+      Darkhold High-Frequency Settlement Protocol &middot; Double-Entry Ledger<br/>
+      Cryptographically verified trade receipt &middot; Zero wash-trading guaranteed.
+    </div>
+  </div>
+</body>
+</html>
+`, badgeBg, badgeColor, badgeColor, badgeText, actionTitle, username, eventSymbol, quantity, price, totalAmount, tradeID, qrNotice)
+
+	reqBody := ResendEmailRequest{
+		From:    fromEmail,
+		To:      []string{recipientEmail},
+		ReplyTo: replyTo,
+		Subject: subjectText,
+		HTML:    htmlContent,
+	}
+
+	return dispatchResendEmail(apiKey, reqBody, "Trade Settlement ("+role+")", recipientEmail)
 }
 
 // Helper: dispatches email request to Resend API
