@@ -58,7 +58,7 @@ export default function HeroPreviewWidget() {
       {
         id: Date.now(),
         time: now,
-        msg: `[BLOCKED // 422] Scalper bot ask ₹8,500 rejected by dynamic price collar (Max cap: ₹2,500)`,
+        msg: `[BLOCKED: HTTP 422] Scalper bot ask ₹8,500 rejected by dynamic price collar (Max cap: ₹2,500)`,
         type: 'alert'
       },
       ...prev.slice(0, 7)

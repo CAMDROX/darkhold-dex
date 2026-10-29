@@ -13,7 +13,6 @@ import {
   FileText,
   UserCheck,
   UserX,
-  ArrowLeft,
   Crown,
 } from 'lucide-react'
 import { Link, Navigate } from 'react-router-dom'
@@ -168,12 +167,9 @@ export default function AdminVerificationsPage() {
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 pb-6 border-b border-[#241E19]">
         <div>
           <div className="flex items-center gap-3">
-            <Link
-              to="/dashboard"
-              className="p-2 rounded-xl bg-[#14100E] border border-[#2A211B] text-[#A8A195] hover:text-white transition-colors"
-            >
-              <ArrowLeft className="w-4 h-4" />
-            </Link>
+            <div className="p-2 rounded-xl bg-[#14100E] border border-[#D4AF37]/40 text-[#F5D061] shadow-[0_0_12px_rgba(212,175,55,0.2)]">
+              <ShieldCheck className="w-5 h-5 text-[#F5D061]" />
+            </div>
             <h1 className="font-cinzel font-bold text-2xl sm:text-3xl text-white flex items-center gap-2.5">
               <span>Darkhold Compliance & KYC Review</span>
               <span className="px-2.5 py-0.5 rounded text-xs font-mono font-bold bg-[#D4AF37]/20 border border-[#D4AF37]/40 text-[#F5D061] flex items-center gap-1">
@@ -182,7 +178,7 @@ export default function AdminVerificationsPage() {
             </h1>
           </div>
           <p className="text-xs font-mono text-[#8E867A] mt-2">
-            Inspect submitted government ID proofs and approve or reject accounts for high-frequency dark pool execution.
+            Inspect submitted government ID proofs and approve or reject accounts for secondary ticket marketplace access.
           </p>
         </div>
 

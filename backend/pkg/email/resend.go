@@ -66,7 +66,7 @@ func SendVerificationEmail(recipientEmail, username, otp string) error {
   <div class="card">
     <div class="logo">
       <div class="brand">THE DARKHOLD EXCHANGE</div>
-      <div class="tag">HIGH-FREQUENCY SECONDARY MARKETPLACE // PS-07</div>
+      <div class="tag">HIGH-FREQUENCY SECONDARY MARKETPLACE</div>
     </div>
     <h1>Verify Your Identity</h1>
     <p>Greetings <strong>%s</strong>,</p>
@@ -173,7 +173,7 @@ func SendKYCApprovedEmail(recipientEmail, username string) error {
       <div class="status-sub">FULL ESCROW & SECONDARY ORDERBOOK PRIVILEGES ACTIVATED</div>
     </div>
     
-    <p>You now have unrestricted access to atomic settlement, sub-10ms Go FIFO matching, and dynamic anti-scalper collar orders.</p>
+    <p>You now have unrestricted access to atomic settlement, ultra-fast Go FIFO matching, and dynamic anti-scalper collar orders.</p>
 
     <div style="text-align: center; margin: 24px 0;">
       <a href="http://localhost:5173/dashboard" class="cta-btn">Access Trading Dashboard &rarr;</a>
@@ -192,7 +192,7 @@ func SendKYCApprovedEmail(recipientEmail, username string) error {
 		From:    fromEmail,
 		To:      []string{recipientEmail},
 		ReplyTo: replyTo,
-		Subject: "🎉 Identity Verified: Dark Pool Access Granted — The Darkhold Exchange",
+		Subject: "🎉 Identity Verified: Exchange Access Granted — The Darkhold Exchange",
 		HTML:    htmlContent,
 	}
 

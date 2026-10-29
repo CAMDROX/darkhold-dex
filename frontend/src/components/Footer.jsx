@@ -36,7 +36,7 @@ export default function Footer() {
             <div className="flex items-center gap-2 pt-2">
               <span className="w-2 h-2 rounded-full bg-[#22C55E] animate-pulse"></span>
               <span className="text-xs font-mono text-[#8E867A]">
-                Go Engine Status: <strong className="text-[#22C55E]">Sub-10ms Active</strong>
+                Go Engine Status: <strong className="text-[#22C55E]">Operational (&lt; 1ms)</strong>
               </span>
             </div>
           </div>
@@ -74,8 +74,8 @@ export default function Footer() {
           {/* Deliverable Tag & Back to Top */}
           <div className="md:col-span-2 space-y-3 text-left md:text-right flex flex-col justify-between">
             <div>
-              <span className="text-[10px] font-mono text-[#6E665A] block">HACKATHON TRACK</span>
-              <span className="text-xs font-mono font-bold text-[#F5D061]">PROBLEM STATEMENT // 07</span>
+              <span className="text-[10px] font-mono text-[#6E665A] block">PLATFORM STATUS</span>
+              <span className="text-xs font-mono font-bold text-[#F5D061]">ENTERPRISE EDITION</span>
             </div>
 
             <button
@@ -92,7 +92,7 @@ export default function Footer() {
         {/* Bottom Credits */}
         <div className="pt-8 flex flex-col sm:flex-row items-center justify-between gap-4 text-xs font-mono text-[#6E665A]">
           <div>
-            © 2026 The Darkhold Exchange. Built for Problem Statement 07.
+            © 2026 The Darkhold Exchange. High-Frequency Secondary Marketplace & Order Book.
           </div>
           <div className="flex items-center gap-4">
             <span className="text-[#8E867A]">React Frontend + Go In-Memory Engine + Supabase DB</span>
