@@ -118,7 +118,7 @@ export default function IdentityVerificationCard({ compact = false }) {
               </span>
             </div>
             <p className="text-xs font-mono text-[#A8C7AF] mt-0.5">
-              Your identity has been verified and reviewed by Darkhold Compliance. All dark pool trading features, atomic escrow, and high-frequency orderbook limits are fully unlocked.
+              Your identity has been verified and reviewed by Darkhold Compliance. All secondary marketplace trading features, atomic escrow, and orderbook limits are fully unlocked.
             </p>
           </div>
         </div>
@@ -189,7 +189,7 @@ export default function IdentityVerificationCard({ compact = false }) {
               </span>
             </div>
             <p className="text-xs font-mono text-[#D1B8AC] mt-1 leading-relaxed">
-              Your email is verified, but you are not yet authorized to trade on the dark pool. Please submit a valid government-issued ID/proof (Passport, National ID, or Driving License). A compliance admin will review and verify your account.
+              Your email is verified, but you are not yet authorized to trade on the secondary exchange. Please submit a valid government-issued ID proof (Passport, National ID, or Driving License). A compliance admin will review and verify your account.
             </p>
             {kycData?.rejection_reason && (
               <div className="mt-2.5 p-2.5 rounded-lg bg-[#381414] border border-[#EF4444]/40 text-xs font-mono text-[#FCA5A5] flex items-start gap-2">

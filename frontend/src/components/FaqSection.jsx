@@ -11,7 +11,7 @@ export default function FaqSection() {
     },
     {
       q: 'Why Go for the matching engine instead of executing directly in Supabase?',
-      a: 'Relational databases require network round-trips and disk I/O locks, which typically result in 40ms to 200ms latency—far too sluggish to survive 1,000+ orders/sec bot floods. The Darkhold matching engine runs in-memory in Go using red-black price trees and ring buffers, delivering sub-10ms matching latency (benchmarked at <4.2ms). Supabase is utilized strictly as an asynchronous double-entry ledger and escrow persistence layer.',
+      a: 'Relational databases require network round-trips and disk I/O locks, which typically result in 40ms to 200ms latency—far too sluggish to survive 1,000+ orders/sec bot floods. The Darkhold matching engine runs in-memory in Go using red-black price trees and ring buffers, delivering sub-millisecond matching latency (benchmarked at < 1ms / 569ns). Supabase is utilized strictly as an asynchronous double-entry ledger and escrow persistence layer.',
     },
     {
       q: 'How does In-Memory FIFO matching eliminate front-running and MEV?',

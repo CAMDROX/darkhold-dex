@@ -34,9 +34,9 @@ export default function ProblemVsSolution() {
     },
     {
       title: 'In-Memory FIFO Matching Engine (Go)',
-      desc: 'Deterministic price-time priority executing in sub-10ms. Eliminates MEV, front-running, and queue jumps with microsecond precision.',
+      desc: 'Deterministic price-time priority executing in real time (< 1ms). Eliminates MEV, front-running, and queue jumps with microsecond precision.',
       icon: Zap,
-      tag: 'SUB-10MS ENGINE',
+      tag: 'HIGH-SPEED ENGINE',
     },
     {
       title: 'Cryptographic Escrow & Proof of Solvency',
@@ -58,7 +58,7 @@ export default function ProblemVsSolution() {
       {/* Section Header */}
       <div className="text-center max-w-3xl mx-auto mb-16">
         <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-[#181412] border border-[#D4AF37]/30 text-xs font-mono text-[#D4AF37] mb-4">
-          <span>THE SECONDARY CRISIS // RE-ENGINEERED</span>
+          <span>THE SECONDARY CRISIS · RE-ENGINEERED</span>
         </div>
         <h2 className="font-cinzel font-black text-3xl sm:text-5xl text-white tracking-wide mb-4">
           Predatory Bots vs. <br className="hidden sm:inline" />

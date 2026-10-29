@@ -60,7 +60,7 @@ export default function Navbar() {
               </span>
             </div>
             <p className="text-[10px] font-mono tracking-wider text-[#A39E93] -mt-0.5">
-              SECONDARY ORDER BOOK // PS-07
+              HIGH-FREQUENCY SECONDARY MARKET
             </p>
           </div>
         </Link>
@@ -96,7 +96,7 @@ export default function Navbar() {
               <span className="relative inline-flex rounded-full h-2 w-2 bg-[#22C55E]"></span>
             </span>
             <span className="text-[#A39E93]">ENGINE:</span>
-            <span className="text-[#22C55E] font-medium">SUB-10MS</span>
+            <span className="text-[#22C55E] font-medium">INSTANT MATCHING</span>
           </div>
 
           {!isAuthenticated ? (

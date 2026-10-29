@@ -120,13 +120,13 @@ export default function InteractiveSimulator() {
       <div className="text-center max-w-3xl mx-auto mb-12">
         <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-[#181412] border border-[#22C55E]/30 text-xs font-mono text-[#22C55E] mb-4">
           <Zap className="w-3.5 h-3.5 text-[#22C55E]" />
-          <span>INTERACTIVE SANDBOX // TEST THE PROTOCOL LIVE</span>
+          <span>INTERACTIVE SANDBOX · LIVE PROTOCOL PLAYGROUND</span>
         </div>
         <h2 className="font-cinzel font-black text-3xl sm:text-5xl text-white tracking-wide mb-4">
           Protocol Mechanics Playground
         </h2>
         <p className="text-base sm:text-lg text-[#B8B2A6]">
-          Experience the three core cryptographic and algorithmic guarantees specified in Problem Statement 07.
+          Experience the three core cryptographic and algorithmic guarantees of the secondary exchange.
         </p>
       </div>
 
@@ -323,7 +323,7 @@ export default function InteractiveSimulator() {
                         ) : (
                           <CheckCircle2 className="w-4 h-4 text-[#22C55E]" />
                         )}
-                        <span>HTTP {collarResult.code} // {collarResult.status}</span>
+                        <span>HTTP {collarResult.code} · {collarResult.status}</span>
                       </div>
                       <p className="text-xs leading-relaxed text-[#DCD6CA]">
                         {collarResult.message}
@@ -349,7 +349,7 @@ export default function InteractiveSimulator() {
               
               <div className="lg:col-span-6 space-y-5">
                 <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-[#D4AF37]/15 border border-[#D4AF37]/30 text-xs font-mono text-[#F5D061]">
-                  <span>AUTOMATED LIQUIDATION // VICTORY TIER</span>
+                  <span>AUTOMATED LIQUIDATION · DUTCH AUCTION</span>
                 </div>
                 <h3 className="font-cinzel font-bold text-2xl text-white">
                   Dutch Price-Decay Auction
@@ -506,7 +506,7 @@ export default function InteractiveSimulator() {
               {/* Right: Live Queue stream */}
               <div className="lg:col-span-7 bg-[#090706] border border-[#241E19] rounded-2xl p-5 font-mono text-xs">
                 <div className="flex items-center justify-between pb-3 border-b border-[#1E1916] mb-3 text-[#8E867A]">
-                  <span>GO WORKER POOL // FIFO MATCH DISPATCH</span>
+                  <span>GO WORKER POOL · FIFO MATCH DISPATCH</span>
                   <span className="text-[#22C55E]">LOCK-FREE CONCURRENCY</span>
                 </div>
 

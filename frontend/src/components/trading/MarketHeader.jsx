@@ -126,15 +126,15 @@ export default function MarketHeader({
           </div>
         </div>
 
-        {/* Right: Sub-10ms Engine Performance Telemetry */}
+        {/* Right: High-Speed Engine Performance Telemetry */}
         <div className="flex items-center gap-3 w-full lg:w-auto justify-end border-t lg:border-t-0 border-[#2A211B] pt-3 lg:pt-0">
           <div className="text-right">
             <div className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-[#18120E] border border-[#D4AF37]/30 text-[10px] font-mono text-[#D4AF37]">
               <Zap className="w-3 h-3 text-[#F5D061]" />
-              <span>SUB-10MS ENGINE</span>
+              <span>HIGH-SPEED ENGINE</span>
             </div>
             <div className="text-[11px] font-mono text-[#8E867A] mt-1">
-              p50: <span className="text-[#22C55E] font-bold">{p50}</span> · p99:{' '}
+              Latency: <span className="text-[#22C55E] font-bold">{p50}</span> · Peak:{' '}
               <span className="text-[#F5D061] font-bold">{p99}</span>
             </div>
           </div>

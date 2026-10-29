@@ -10,8 +10,8 @@ export default function CoreFeatures() {
       tier: 'pass',
       tierLabel: 'FOUNDATIONAL PASS TIER',
       title: 'In-Memory FIFO Matching Engine',
-      summary: 'Deterministic price-time priority order book built in Go with lock-free ring buffers, executing limit and market orders in sub-10ms.',
-      specs: ['Sub-10ms matching latency', 'Price-Time priority (FIFO)', 'Limit & Market order support', 'Zero race condition mutexing'],
+      summary: 'Deterministic price-time priority order book built in Go with intrusive doubly-linked queues and red-black price levels, executing limit and market orders in sub-millisecond time.',
+      specs: ['Sub-millisecond matching latency (< 1ms)', 'Price-Time priority (FIFO)', 'Limit & Market order support', 'Zero race condition mutexing'],
       icon: Cpu,
       accent: 'gold',
     },
@@ -88,13 +88,13 @@ export default function CoreFeatures() {
       <div className="text-center max-w-3xl mx-auto mb-12">
         <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-[#181412] border border-[#D4AF37]/30 text-xs font-mono text-[#E5C378] mb-4">
           <Sparkles className="w-3.5 h-3.5 text-[#D4AF37]" />
-          <span>SPECIFICATION MATRIX // PASS & VICTORY TIERS</span>
+          <span>ENGINE SPECIFICATIONS · HIGH-CONCURRENCY ARCHITECTURE</span>
         </div>
         <h2 className="font-cinzel font-black text-3xl sm:text-5xl text-white tracking-wide mb-4">
           Core Engine Architecture
         </h2>
         <p className="text-base sm:text-lg text-[#B8B2A6]">
-          Every component engineered specifically to satisfy and exceed the requirements of Problem Statement 07.
+          Every component engineered for institutional secondary ticketing with sub-millisecond execution.
         </p>
 
         {/* Filter Pills */}

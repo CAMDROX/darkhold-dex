@@ -89,7 +89,7 @@ export function WebSocketProvider({ children }) {
               const data = msg.data
               if (user && data.user_id === user.id) {
                 if (data.kyc_status === 'verified') {
-                  toast.success('🎉 Identity Verified! Full dark pool & escrow trading privileges unlocked.', {
+                  toast.success('🎉 Identity Verified! Full exchange & escrow trading privileges unlocked.', {
                     icon: '🛡️',
                     duration: 6000,
                   })

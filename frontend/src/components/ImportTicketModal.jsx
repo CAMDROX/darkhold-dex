@@ -158,7 +158,7 @@ export default function ImportTicketModal({ isOpen, onClose, onTicketQueued }) {
             <div>
               <div className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full bg-[#181412] border border-[#D4AF37]/30 text-[10px] font-mono text-[#D4AF37]">
                 <Zap className="w-2.5 h-2.5 animate-pulse" />
-                <span>OPEN-LOOP INGESTION // ASYNQ</span>
+                <span>OPEN-LOOP INGESTION · VERIFICATION PIPELINE</span>
               </div>
               <h2 className="font-cinzel font-bold text-xl text-white mt-1">
                 Import Secondary Relic

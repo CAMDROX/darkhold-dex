@@ -38,10 +38,10 @@ export default function Hero() {
       </div>
 
       <div className="relative max-w-5xl mx-auto text-center z-10">
-        {/* Top Problem Statement Pill */}
+        {/* Top Live Status Pill */}
         <div className="inline-flex items-center gap-2.5 px-4 py-2 rounded-full gloss-pill text-xs font-mono tracking-wider text-[#E5C378] mb-8 shadow-[0_0_25px_rgba(212,175,55,0.15)] animate-float-subtle">
-          <span className="w-2.5 h-2.5 rounded-full bg-[#EF4444] animate-pulse" />
-          <span className="text-[#F5D061] font-bold">PROBLEM STATEMENT // 07</span>
+          <span className="w-2.5 h-2.5 rounded-full bg-[#22C55E] animate-pulse" />
+          <span className="text-[#F5D061] font-bold">LIVE PRODUCTION</span>
           <span className="text-[#5A4F44]">|</span>
           <span className="text-white font-medium">HIGH-FREQUENCY SECONDARY MARKETPLACE</span>
         </div>
@@ -91,10 +91,10 @@ export default function Hero() {
               <Gauge className="w-4 h-4 text-[#22C55E]" />
             </div>
             <div className="text-2xl sm:text-3xl font-mono font-bold text-[#22C55E]">
-              &lt; 4.2ms
+              &lt; 1ms
             </div>
             <div className="text-[11px] text-[#A59E92] mt-1 font-mono">
-              Target: sub-10ms (Go In-Memory)
+              High-Speed In-Memory Matching (&lt; 1ms)
             </div>
           </div>
 

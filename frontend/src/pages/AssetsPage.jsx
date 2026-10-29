@@ -170,7 +170,7 @@ export default function AssetsPage() {
           <div>
             <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-[#181412] border border-[#D4AF37]/40 text-xs font-mono text-[#F5D061] mb-3">
               <Sparkles className="w-3.5 h-3.5 text-[#F5D061]" />
-              <span>SOVEREIGN ASSET TREASURY // DOUBLE-ENTRY LEDGER</span>
+              <span>SOVEREIGN ASSET TREASURY · DOUBLE-ENTRY ESCROW</span>
             </div>
             <h1 className="font-cinzel font-black text-3xl sm:text-4xl text-white">
               Trader Assets & Vault

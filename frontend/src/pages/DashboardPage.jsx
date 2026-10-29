@@ -272,7 +272,7 @@ export default function DashboardPage() {
           <div>
             <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-[#181412] border border-[#22C55E]/30 text-xs font-mono text-[#22C55E] mb-2">
               <span className="w-2 h-2 rounded-full bg-[#22C55E] animate-pulse" />
-              <span>IN-MEMORY MATCHING TERMINAL // SUB-10MS SLA</span>
+              <span>LIVE ORDER BOOK · REAL-TIME EXECUTION</span>
             </div>
             <h1 className="font-cinzel font-black text-2xl sm:text-3xl text-white">
               Secondary Exchange —{' '}
