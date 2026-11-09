@@ -75,10 +75,10 @@ export const options = {
           <Layers className="w-3.5 h-3.5 text-[#D4AF37]" />
           <span className="font-semibold tracking-wide">FULL-STACK ARCHITECTURE</span>
         </div>
-        <h2 className="font-cinzel font-black text-3xl sm:text-5xl text-white tracking-wide mb-4">
+        <h2 className="font-sans font-black text-3xl sm:text-5xl text-white tracking-wide mb-4">
           System Topology & Pipeline
         </h2>
-        <p className="text-base sm:text-lg text-white/60 font-light">
+        <p className="text-base sm:text-lg text-white/75 font-light">
           Engineered as requested: <strong>React</strong> for responsive low-latency frontend, 
           <strong> Go</strong> for ultra-fast in-memory FIFO matching, and <strong>Supabase</strong> for ACID double-entry ledger persistence.
         </p>
@@ -98,14 +98,14 @@ export const options = {
                 <Layers className="w-5 h-5" />
               </div>
             </div>
-            <h3 className="font-cinzel font-bold text-xl text-white mb-2">
+            <h3 className="font-sans font-bold text-xl text-white mb-2">
               React 19 & WebSockets
             </h3>
-            <p className="text-xs text-white/50 mb-4 leading-relaxed font-light">
+            <p className="text-xs text-white/75 mb-4 leading-relaxed font-light">
               Vite-powered ultra-fast frontend streaming real-time Level 2 depth ladders, order submissions, and Dutch auction ticks.
             </p>
           </div>
-          <ul className="text-xs font-mono text-white/70 space-y-2 pt-4 border-t border-white/[0.06]">
+          <ul className="text-xs font-mono text-white/70 space-y-2 pt-4 border-t border-white/20">
             <li>• Bidirectional WebSocket streaming</li>
             <li>• SVG / Canvas depth charts</li>
             <li>• Spatial glassmorphism tokens</li>
@@ -114,7 +114,7 @@ export const options = {
         </div>
 
         {/* Tier 2: Backend */}
-        <div className="spatial-card rounded-3xl p-6 sm:p-7 flex flex-col justify-between hover:border-emerald-500/50 hover:shadow-[0_28px_70px_-10px_rgba(0,0,0,0.98),0_0_35px_rgba(34,197,94,0.15)]">
+        <div className="spatial-card rounded-3xl p-6 sm:p-7 flex flex-col justify-between hover:border-emerald-500/50 hover:shadow-xl shadow-black/40">
           <div>
             <div className="flex items-center justify-between mb-4">
               <span className="text-[10px] font-mono tracking-widest text-emerald-400 uppercase font-bold">
@@ -124,14 +124,14 @@ export const options = {
                 <Cpu className="w-5 h-5" />
               </div>
             </div>
-            <h3 className="font-cinzel font-bold text-xl text-white mb-2">
+            <h3 className="font-sans font-bold text-xl text-white mb-2">
               Go In-Memory FIFO Engine
             </h3>
-            <p className="text-xs text-white/50 mb-4 leading-relaxed font-light">
+            <p className="text-xs text-white/75 mb-4 leading-relaxed font-light">
               High-frequency Go binary executing limit and market orders using red-black trees, doubly-linked queues, sub-millisecond matching, and dynamic price collars.
             </p>
           </div>
-          <ul className="text-xs font-mono text-white/70 space-y-2 pt-4 border-t border-white/[0.06]">
+          <ul className="text-xs font-mono text-white/70 space-y-2 pt-4 border-t border-white/20">
             <li>• Sub-millisecond latency execution (&lt; 1ms)</li>
             <li>• Anti-scalper dynamic price collars</li>
             <li>• Lock-free concurrency (Goroutines)</li>
@@ -140,7 +140,7 @@ export const options = {
         </div>
 
         {/* Tier 3: Database & Ledger */}
-        <div className="spatial-card rounded-3xl p-6 sm:p-7 flex flex-col justify-between hover:border-rose-500/50 hover:shadow-[0_28px_70px_-10px_rgba(0,0,0,0.98),0_0_35px_rgba(239,68,68,0.15)]">
+        <div className="spatial-card rounded-3xl p-6 sm:p-7 flex flex-col justify-between hover:border-rose-500/50 hover:shadow-xl shadow-black/40">
           <div>
             <div className="flex items-center justify-between mb-4">
               <span className="text-[10px] font-mono tracking-widest text-rose-400 uppercase font-bold">
@@ -150,14 +150,14 @@ export const options = {
                 <Database className="w-5 h-5" />
               </div>
             </div>
-            <h3 className="font-cinzel font-bold text-xl text-white mb-2">
+            <h3 className="font-sans font-bold text-xl text-white mb-2">
               Supabase DB Only
             </h3>
-            <p className="text-xs text-white/50 mb-4 leading-relaxed font-light">
+            <p className="text-xs text-white/75 mb-4 leading-relaxed font-light">
               Strict persistence layer handling double-entry accounting ledger entries, cryptographic delivery escrow, and tamper-proof trade audits.
             </p>
           </div>
-          <ul className="text-xs font-mono text-white/70 space-y-2 pt-4 border-t border-white/[0.06]">
+          <ul className="text-xs font-mono text-white/70 space-y-2 pt-4 border-t border-white/20">
             <li>• Double-entry balance conservation</li>
             <li>• Zero phantom tokens / anomalies</li>
             <li>• Barcode delivery escrow state locks</li>
@@ -168,8 +168,8 @@ export const options = {
       </div>
 
       {/* Code Snippet Tabs (Spatial Glass Console) */}
-      <div className="spatial-glass rounded-3xl border border-white/[0.1] overflow-hidden shadow-[0_25px_60px_-10px_rgba(0,0,0,0.95)]">
-        <div className="flex flex-wrap items-center justify-between px-6 py-4 border-b border-white/[0.08] bg-black/60">
+      <div className="spatial-glass rounded-3xl border border-white/20 overflow-hidden shadow-xl shadow-black/40">
+        <div className="flex flex-wrap items-center justify-between px-6 py-4 border-b border-white/20 bg-[#1B1F29]">
           <div className="flex items-center gap-2">
             <Terminal className="w-4 h-4 text-[#D4AF37]" />
             <span className="font-mono text-xs text-white font-semibold">
@@ -177,13 +177,13 @@ export const options = {
             </span>
           </div>
 
-          <div className="flex items-center gap-2 mt-2 sm:mt-0 p-1 rounded-xl bg-black/50 border border-white/[0.06]">
+          <div className="flex items-center gap-2 mt-2 sm:mt-0 p-1 rounded-xl bg-[#171A23] border border-white/20">
             <button
               onClick={() => setActiveSnippet('go')}
               className={`px-3 py-1.5 rounded-lg text-xs font-mono cursor-pointer transition-all ${
                 activeSnippet === 'go'
                   ? 'bg-emerald-500/20 text-emerald-300 border border-emerald-500/40 shadow-sm'
-                  : 'text-white/40 hover:text-white'
+                  : 'text-white/75 hover:text-white'
               }`}
             >
               Go Matching Engine
@@ -193,7 +193,7 @@ export const options = {
               className={`px-3 py-1.5 rounded-lg text-xs font-mono cursor-pointer transition-all ${
                 activeSnippet === 'supabase'
                   ? 'bg-[#D4AF37]/20 text-[#F5D061] border border-[#D4AF37]/40 shadow-sm'
-                  : 'text-white/40 hover:text-white'
+                  : 'text-white/75 hover:text-white'
               }`}
             >
               Supabase Double-Entry SQL
@@ -203,7 +203,7 @@ export const options = {
               className={`px-3 py-1.5 rounded-lg text-xs font-mono cursor-pointer transition-all ${
                 activeSnippet === 'k6'
                   ? 'bg-rose-500/20 text-rose-300 border border-rose-500/40 shadow-sm'
-                  : 'text-white/40 hover:text-white'
+                  : 'text-white/75 hover:text-white'
               }`}
             >
               k6 / Locust Stress Benchmarks
@@ -211,7 +211,7 @@ export const options = {
           </div>
         </div>
 
-        <div className="p-6 bg-black/70 overflow-x-auto">
+        <div className="p-6 bg-[#161922] overflow-x-auto">
           <pre className="font-mono text-xs sm:text-sm text-white/90 leading-relaxed">
             <code>
               {activeSnippet === 'go' && goCode}

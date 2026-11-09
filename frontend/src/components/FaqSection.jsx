@@ -7,7 +7,7 @@ export default function FaqSection() {
   const faqs = [
     {
       q: 'How do Anti-Scalping Price Collars prevent predatory gouging?',
-      a: 'Each secondary festival pass or relic is cryptographically registered with its original issuer Face Value (e.g. ₹2,000.00). The Darkhold Go engine implements a pre-matching validation gate enforcing a maximum collar ceiling (e.g., Face Value +25% = ₹2,500.00). Any limit ask, market order, or bot sweep attempt above this threshold is dropped at ingress with HTTP 422 Unprocessable Entity before ever touching the order book.',
+      a: 'Each secondary festival pass or verified ticket is cryptographically registered with its original issuer Face Value (e.g. ₹2,000.00). The Darkhold Go engine implements a pre-matching validation gate enforcing a maximum collar ceiling (e.g., Face Value +25% = ₹2,500.00). Any limit ask, market order, or bot sweep attempt above this threshold is dropped at ingress with HTTP 422 Unprocessable Entity before ever touching the order book.',
     },
     {
       q: 'Why Go for the matching engine instead of executing directly in Supabase?',
@@ -35,10 +35,10 @@ export default function FaqSection() {
           <HelpCircle className="w-3.5 h-3.5 text-[#D4AF37]" />
           <span className="font-semibold tracking-wide">TECHNICAL & PROTOCOL FAQ</span>
         </div>
-        <h2 className="font-cinzel font-black text-3xl sm:text-5xl text-white tracking-wide mb-4">
+        <h2 className="font-sans font-black text-3xl sm:text-5xl text-white tracking-wide mb-4">
           Frequently Answered
         </h2>
-        <p className="text-base sm:text-lg text-white/60 font-light">
+        <p className="text-base sm:text-lg text-white/75 font-light">
           Answers to the core architectural, financial, and anti-scalping mechanisms of Darkhold Exchange.
         </p>
       </div>
@@ -51,28 +51,28 @@ export default function FaqSection() {
               key={idx}
               className={`rounded-3xl border transition-all duration-300 overflow-hidden ${
                 isOpen 
-                  ? 'spatial-glass border-[#D4AF37]/45 shadow-[0_20px_50px_rgba(0,0,0,0.9),0_0_25px_rgba(212,175,55,0.08)]' 
-                  : 'bg-black/40 border-white/[0.08] hover:border-white/[0.18]'
+                  ? 'spatial-glass border-[#D4AF37]/45 shadow-xl shadow-black/45' 
+                  : 'bg-[#181B24] border-white/20 hover:border-white/25'
               }`}
             >
               <button
                 onClick={() => setOpenIdx(isOpen ? -1 : idx)}
                 className="w-full p-6 text-left flex items-center justify-between gap-4 cursor-pointer transition-colors"
               >
-                <span className={`font-cinzel font-bold text-base sm:text-lg transition-colors ${
+                <span className={`font-sans font-bold text-base sm:text-lg transition-colors ${
                   isOpen ? 'text-[#F5D061]' : 'text-white'
                 }`}>
                   {faq.q}
                 </span>
                 <div className={`w-8 h-8 rounded-xl flex items-center justify-center shrink-0 transition-all duration-300 ${
-                  isOpen ? 'bg-[#D4AF37]/20 border border-[#D4AF37]/40 rotate-180' : 'bg-white/[0.04] border border-white/[0.08]'
+                  isOpen ? 'bg-[#D4AF37]/20 border border-[#D4AF37]/40 rotate-180' : 'bg-white/[0.07] border border-white/20'
                 }`}>
                   <ChevronDown className="w-4 h-4 text-[#D4AF37]" />
                 </div>
               </button>
 
               {isOpen && (
-                <div className="px-6 pb-6 pt-1 text-sm text-white/70 leading-relaxed border-t border-white/[0.06] font-light">
+                <div className="px-6 pb-6 pt-1 text-sm text-white/70 leading-relaxed border-t border-white/20 font-light">
                   {faq.a}
                 </div>
               )}

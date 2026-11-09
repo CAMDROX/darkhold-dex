@@ -182,14 +182,23 @@ export const authApi = {
 export const ticketsApi = {
   getEvents: () => apiRequest('/api/events'),
 
-  importTicket: (ticketId, eventSymbol) =>
-    apiRequest('/api/tickets/import', {
+  importTicket: (arg1, arg2) => {
+    let ticketId, eventSymbol
+    if (typeof arg1 === 'object' && arg1 !== null) {
+      ticketId = arg1.ticket_id || arg1.ticketId
+      eventSymbol = arg1.event_symbol || arg1.eventSymbol
+    } else {
+      ticketId = arg1
+      eventSymbol = arg2
+    }
+    return apiRequest('/api/tickets/import', {
       method: 'POST',
       body: JSON.stringify({
-        ticket_id: ticketId,
-        event_symbol: eventSymbol,
+        ticket_id: String(ticketId || '').trim(),
+        event_symbol: String(eventSymbol || '').trim(),
       }),
-    }),
+    })
+  },
 
   getMyRelics: () => apiRequest('/api/tickets/mine'),
 }
@@ -237,8 +246,6 @@ export const ordersApi = {
 
   getTelemetry: () => apiRequest('/api/engine/telemetry'),
 }
-
-
 
 // Dutch Auction Price-Decay Subsystem Methods
 export const auctionsApi = {

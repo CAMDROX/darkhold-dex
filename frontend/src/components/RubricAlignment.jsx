@@ -37,10 +37,10 @@ export default function RubricAlignment() {
           <Award className="w-3.5 h-3.5 text-[#D4AF37]" />
           <span className="font-semibold tracking-wide">EVALUATION COMPLIANCE MATRIX</span>
         </div>
-        <h2 className="font-cinzel font-black text-3xl sm:text-5xl text-white tracking-wide mb-4">
+        <h2 className="font-sans font-black text-3xl sm:text-5xl text-white tracking-wide mb-4">
           Deliverables & Grading Alignment
         </h2>
-        <p className="text-base sm:text-lg text-white/60 font-light">
+        <p className="text-base sm:text-lg text-white/75 font-light">
           Direct fulfillment of every deliverable, technical freedom criteria, and victory tier bonus mark.
         </p>
       </div>
@@ -58,14 +58,14 @@ export default function RubricAlignment() {
               </div>
               <div className="flex-1">
                 <div className="flex items-center justify-between mb-2">
-                  <h3 className="font-cinzel font-bold text-lg text-white group-hover:text-[#F5D061] transition-colors">
+                  <h3 className="font-sans font-bold text-lg text-white group-hover:text-[#F5D061] transition-colors">
                     {item.title}
                   </h3>
                   <span className="px-3 py-1 rounded-full text-[10px] font-mono font-bold bg-emerald-500/15 border border-emerald-500/40 text-emerald-400 shadow-sm">
                     {item.status}
                   </span>
                 </div>
-                <p className="text-xs sm:text-sm text-white/50 leading-relaxed font-light">
+                <p className="text-xs sm:text-sm text-white/75 leading-relaxed font-light">
                   {item.desc}
                 </p>
               </div>

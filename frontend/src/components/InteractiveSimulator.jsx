@@ -86,8 +86,8 @@ export default function InteractiveSimulator() {
   // --- 3. FIFO Engine Queue State ---
   const [fifoLog, setFifoLog] = useState([
     { id: 'ORD-902', time: '18:32:01.104', type: 'LIMIT_BUY', price: 2200, qty: 1, user: 'Fan_8829', status: 'MATCHED', latency: '0.62ms' },
-    { id: 'ORD-901', time: '18:32:01.098', type: 'LIMIT_SELL', price: 2350, qty: 2, user: 'Vesper Thorn', status: 'RESTING', latency: '0.41ms' },
-    { id: 'ORD-900', time: '18:31:59.882', type: 'MARKET_BUY', price: 2300, qty: 1, user: 'Morgana Vale', status: 'SETTLED', latency: '0.88ms' },
+    { id: 'ORD-901', time: '18:32:01.098', type: 'LIMIT_SELL', price: 2350, qty: 2, user: 'Rahul V.', status: 'RESTING', latency: '0.41ms' },
+    { id: 'ORD-900', time: '18:31:59.882', type: 'MARKET_BUY', price: 2300, qty: 1, user: 'Ananya I.', status: 'SETTLED', latency: '0.88ms' },
   ])
   const [incomingType, setIncomingType] = useState('MARKET_BUY')
 
@@ -124,25 +124,25 @@ export default function InteractiveSimulator() {
           <Zap className="w-3.5 h-3.5 text-emerald-400" />
           <span className="font-semibold tracking-wide">INTERACTIVE SANDBOX · LIVE PROTOCOL PLAYGROUND</span>
         </div>
-        <h2 className="font-cinzel font-black text-3xl sm:text-5xl text-white tracking-wide mb-4">
+        <h2 className="font-sans font-black text-3xl sm:text-5xl text-white tracking-wide mb-4">
           Protocol Mechanics Playground
         </h2>
-        <p className="text-base sm:text-lg text-white/60 font-light">
+        <p className="text-base sm:text-lg text-white/75 font-light">
           Experience the three core cryptographic and algorithmic guarantees of the secondary exchange.
         </p>
       </div>
 
       {/* Main Interactive Container (Spatial Glass) */}
-      <div className="spatial-glass rounded-3xl border border-white/[0.12] shadow-[0_30px_80px_-15px_rgba(0,0,0,0.95),0_0_40px_rgba(212,175,55,0.08),inset_0_1px_0_rgba(255,255,255,0.2)] overflow-hidden relative z-10 transition-all duration-300">
+      <div className="spatial-glass rounded-3xl border border-white/20 shadow-xl shadow-black/40 overflow-hidden relative z-10 transition-all duration-300">
         
         {/* Navigation Tabs (Sunken Spatial Tray) */}
-        <div className="flex border-b border-white/[0.08] bg-black/60 p-1.5 gap-2">
+        <div className="flex border-b border-white/20 bg-[#1B1F29] p-1.5 gap-2">
           <button
             onClick={() => setActiveTab('collar')}
             className={`flex-1 py-3.5 px-4 rounded-2xl text-xs sm:text-sm font-mono tracking-wider transition-all duration-300 flex items-center justify-center gap-2 cursor-pointer ${
               activeTab === 'collar'
-                ? 'bg-rose-500/20 text-rose-300 border border-rose-500/50 font-semibold shadow-[0_0_20px_rgba(239,68,68,0.25)] scale-[1.01]'
-                : 'text-white/40 hover:text-white hover:bg-white/[0.03] border border-transparent'
+                ? 'bg-rose-500/20 text-rose-300 border border-rose-500/50 font-semibold shadow-[0_0_20px_rgba(239,68,68,0.25)]'
+                : 'text-white/75 hover:text-white hover:bg-white/[0.06] border border-transparent'
             }`}
           >
             <ShieldCheck className="w-4 h-4 text-rose-400" />
@@ -153,8 +153,8 @@ export default function InteractiveSimulator() {
             onClick={() => setActiveTab('dutch')}
             className={`flex-1 py-3.5 px-4 rounded-2xl text-xs sm:text-sm font-mono tracking-wider transition-all duration-300 flex items-center justify-center gap-2 cursor-pointer ${
               activeTab === 'dutch'
-                ? 'bg-[#D4AF37]/20 text-[#F5D061] border border-[#D4AF37]/50 font-semibold shadow-[0_0_20px_rgba(212,175,55,0.25)] scale-[1.01]'
-                : 'text-white/40 hover:text-white hover:bg-white/[0.03] border border-transparent'
+                ? 'bg-[#D4AF37]/20 text-[#F5D061] border border-[#D4AF37]/50 font-semibold shadow-[0_0_20px_rgba(212,175,55,0.25)]'
+                : 'text-white/75 hover:text-white hover:bg-white/[0.06] border border-transparent'
             }`}
           >
             <Timer className="w-4 h-4 text-[#F5D061]" />
@@ -165,8 +165,8 @@ export default function InteractiveSimulator() {
             onClick={() => setActiveTab('fifo')}
             className={`flex-1 py-3.5 px-4 rounded-2xl text-xs sm:text-sm font-mono tracking-wider transition-all duration-300 flex items-center justify-center gap-2 cursor-pointer ${
               activeTab === 'fifo'
-                ? 'bg-emerald-500/20 text-emerald-300 border border-emerald-500/50 font-semibold shadow-[0_0_20px_rgba(34,197,94,0.25)] scale-[1.01]'
-                : 'text-white/40 hover:text-white hover:bg-white/[0.03] border border-transparent'
+                ? 'bg-emerald-500/20 text-emerald-300 border border-emerald-500/50 font-semibold shadow-[0_0_20px_rgba(34,197,94,0.25)]'
+                : 'text-white/75 hover:text-white hover:bg-white/[0.06] border border-transparent'
             }`}
           >
             <Cpu className="w-4 h-4 text-emerald-400" />
@@ -182,18 +182,18 @@ export default function InteractiveSimulator() {
               {/* Controls Column */}
               <div className="lg:col-span-6 space-y-6">
                 <div>
-                  <h3 className="font-cinzel font-bold text-2xl text-white mb-2">
+                  <h3 className="font-sans font-bold text-2xl text-white mb-2">
                     Dynamic Price Collar Sandbox
                   </h3>
-                  <p className="text-sm text-white/60 font-light">
+                  <p className="text-sm text-white/75 font-light">
                     Adjust the original Face Value and maximum allowable collar margin. Test any resell price to see whether the Go engine accepts or drops the order before reaching the book.
                   </p>
                 </div>
 
                 {/* Slider: Original Face Value */}
-                <div className="space-y-2 p-4 rounded-2xl bg-black/40 border border-white/[0.06] shadow-inner">
+                <div className="space-y-2 p-4 rounded-2xl bg-[#181B24] border border-white/20 shadow-inner">
                   <div className="flex justify-between text-xs font-mono">
-                    <span className="text-white/50">1. ORIGINAL FACE VALUE</span>
+                    <span className="text-white/75">1. ORIGINAL FACE VALUE</span>
                     <span className="text-[#F5D061] font-bold text-sm">₹{faceValue.toLocaleString()}</span>
                   </div>
                   <input
@@ -205,16 +205,16 @@ export default function InteractiveSimulator() {
                     onChange={(e) => setFaceValue(Number(e.target.value))}
                     className="w-full accent-[#D4AF37] cursor-pointer"
                   />
-                  <div className="flex justify-between text-[10px] font-mono text-white/30">
+                  <div className="flex justify-between text-[10px] font-mono text-white/75">
                     <span>₹500</span>
                     <span>₹10,000</span>
                   </div>
                 </div>
 
                 {/* Slider: Maximum Collar Cap % */}
-                <div className="space-y-2 p-4 rounded-2xl bg-black/40 border border-white/[0.06] shadow-inner">
+                <div className="space-y-2 p-4 rounded-2xl bg-[#181B24] border border-white/20 shadow-inner">
                   <div className="flex justify-between text-xs font-mono">
-                    <span className="text-white/50">2. MAX COLLAR CEILING BAND</span>
+                    <span className="text-white/75">2. MAX COLLAR CEILING BAND</span>
                     <span className="text-rose-400 font-bold text-sm">+{collarPercent}% (Cap: ₹{maxCollarPrice.toLocaleString()})</span>
                   </div>
                   <input
@@ -226,7 +226,7 @@ export default function InteractiveSimulator() {
                     onChange={(e) => setCollarPercent(Number(e.target.value))}
                     className="w-full accent-rose-500 cursor-pointer"
                   />
-                  <div className="flex justify-between text-[10px] font-mono text-white/30">
+                  <div className="flex justify-between text-[10px] font-mono text-white/75">
                     <span>+10% (Strict)</span>
                     <span>+50% (Relaxed)</span>
                   </div>
@@ -235,7 +235,7 @@ export default function InteractiveSimulator() {
                 {/* Input: Test Order Price */}
                 <div className="space-y-2">
                   <div className="flex justify-between text-xs font-mono">
-                    <span className="text-white/50">3. TEST SECONDARY ASK / BID PRICE</span>
+                    <span className="text-white/75">3. TEST SECONDARY ASK / BID PRICE</span>
                     <span className="text-white font-bold">₹{testOrderPrice.toLocaleString()}</span>
                   </div>
                   <div className="flex flex-wrap sm:flex-nowrap gap-2">
@@ -243,17 +243,17 @@ export default function InteractiveSimulator() {
                       type="number"
                       value={testOrderPrice}
                       onChange={(e) => setTestOrderPrice(Number(e.target.value))}
-                      className="flex-1 bg-black/50 border border-white/[0.08] rounded-xl px-4 py-2.5 font-mono text-sm text-white focus:outline-none focus:border-[#D4AF37]/70 shadow-inner"
+                      className="flex-1 bg-[#171A23] border border-white/20 rounded-xl px-4 py-2.5 font-mono text-sm text-white focus:outline-none focus:border-[#D4AF37]/70 shadow-inner"
                     />
                     <button
                       onClick={() => setTestOrderPrice(Math.round(faceValue * 1.15))}
-                      className="px-3.5 py-2 text-xs font-mono rounded-xl bg-emerald-500/15 border border-emerald-500/40 text-emerald-300 hover:bg-emerald-500/25 transition-all cursor-pointer hover:-translate-y-0.5"
+                      className="px-3.5 py-2 text-xs font-mono rounded-xl bg-emerald-500/15 border border-emerald-500/40 text-emerald-300 hover:bg-emerald-500/25 transition-all cursor-pointer"
                     >
                       Fair Fan (₹{Math.round(faceValue * 1.15).toLocaleString()})
                     </button>
                     <button
                       onClick={() => setTestOrderPrice(faceValue * 3)}
-                      className="px-3.5 py-2 text-xs font-mono rounded-xl bg-rose-500/15 border border-rose-500/40 text-rose-300 hover:bg-rose-500/25 transition-all cursor-pointer hover:-translate-y-0.5"
+                      className="px-3.5 py-2 text-xs font-mono rounded-xl bg-rose-500/15 border border-rose-500/40 text-rose-300 hover:bg-rose-500/25 transition-all cursor-pointer"
                     >
                       Bot 3x (₹{(faceValue * 3).toLocaleString()})
                     </button>
@@ -263,9 +263,9 @@ export default function InteractiveSimulator() {
                 {/* Submit Test Button */}
                 <button
                   onClick={handleTestCollar}
-                  className="w-full py-4 rounded-xl font-mono text-xs uppercase tracking-widest font-bold text-[#0B0908] bg-gradient-to-r from-[#D4AF37] via-[#F5D061] to-[#E5C378] hover:shadow-[0_0_30px_rgba(212,175,55,0.45)] transition-all duration-300 cursor-pointer flex items-center justify-center gap-2 hover:-translate-y-0.5 active:scale-95"
+                  className="w-full py-4 rounded-xl font-mono text-xs uppercase tracking-widest font-bold text-[#111318] bg-gradient-to-r from-[#D4AF37] via-[#F5D061] to-[#E5C378] hover:shadow-[0_0_30px_rgba(212,175,55,0.45)] transition-all duration-300 cursor-pointer flex items-center justify-center gap-2"
                 >
-                  <ShieldCheck className="w-4 h-4 text-[#0B0908]" />
+                  <ShieldCheck className="w-4 h-4 text-[#111318]" />
                   <span>Execute Pre-Matching Collar Check</span>
                 </button>
               </div>
@@ -274,12 +274,12 @@ export default function InteractiveSimulator() {
               <div className="lg:col-span-6 space-y-6">
                 
                 {/* Visual Band Gauge */}
-                <div className="bg-black/50 border border-white/[0.08] rounded-3xl p-6 shadow-inner">
-                  <span className="text-xs font-mono text-white/50 block mb-3 font-semibold">
+                <div className="bg-[#171A23] border border-white/20 rounded-3xl p-6 shadow-inner">
+                  <span className="text-xs font-mono text-white/75 block mb-3 font-semibold">
                     DYNAMIC PRICE BAND VISUALIZER
                   </span>
                   
-                  <div className="relative h-12 w-full bg-black/60 rounded-2xl overflow-hidden flex border border-white/[0.08] shadow-inner">
+                  <div className="relative h-12 w-full bg-[#1B1F29] rounded-2xl overflow-hidden flex border border-white/20 shadow-inner">
                     {/* Fair Band */}
                     <div
                       className="h-full bg-gradient-to-r from-emerald-500/40 to-emerald-500/70 flex items-center justify-center text-[10px] font-mono text-emerald-100 font-semibold px-2"
@@ -297,16 +297,16 @@ export default function InteractiveSimulator() {
                   </div>
 
                   <div className="flex justify-between text-xs font-mono mt-3">
-                    <span className="text-white/40">Face: ₹{faceValue}</span>
+                    <span className="text-white/75">Face: ₹{faceValue}</span>
                     <span className="text-[#F5D061] font-semibold">Ceiling Cap: ₹{maxCollarPrice.toLocaleString()}</span>
                     <span className="text-rose-400">Uncapped Gouge</span>
                   </div>
                 </div>
 
                 {/* Console Log Output */}
-                <div className="bg-black/60 border border-white/[0.08] rounded-3xl p-6 font-mono text-xs shadow-inner">
-                  <div className="flex items-center justify-between pb-3 border-b border-white/[0.06] mb-3">
-                    <span className="flex items-center gap-2 text-white/60">
+                <div className="bg-[#1B1F29] border border-white/20 rounded-3xl p-6 font-mono text-xs shadow-inner">
+                  <div className="flex items-center justify-between pb-3 border-b border-white/20 mb-3">
+                    <span className="flex items-center gap-2 text-white/75">
                       <Terminal className="w-3.5 h-3.5 text-[#D4AF37]" />
                       Go In-Memory Gate Output
                     </span>
@@ -332,7 +332,7 @@ export default function InteractiveSimulator() {
                       </p>
                     </div>
                   ) : (
-                    <div className="py-8 text-center text-white/30">
+                    <div className="py-8 text-center text-white/75">
                       Click "Execute Pre-Matching Collar Check" to simulate Go engine gate response.
                     </div>
                   )}
@@ -353,20 +353,20 @@ export default function InteractiveSimulator() {
                 <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-[#D4AF37]/15 border border-[#D4AF37]/35 text-xs font-mono text-[#F5D061] shadow-[0_0_12px_rgba(212,175,55,0.2)]">
                   <span>AUTOMATED LIQUIDATION · DUTCH AUCTION</span>
                 </div>
-                <h3 className="font-cinzel font-bold text-2xl text-white">
+                <h3 className="font-sans font-bold text-2xl text-white">
                   Dutch Price-Decay Auction
                 </h3>
-                <p className="text-sm text-white/60 font-light leading-relaxed">
+                <p className="text-sm text-white/75 font-light leading-relaxed">
                   Distressed festival passes liquidate over time without panic dumping. Price starts at collar ceiling (₹2,500) and continuously decays toward the reserve floor (₹1,800). The first bidder to click instantly locks the trade!
                 </p>
 
                 {/* Progress bar */}
-                <div className="space-y-2 p-4 rounded-2xl bg-black/40 border border-white/[0.06] shadow-inner">
+                <div className="space-y-2 p-4 rounded-2xl bg-[#181B24] border border-white/20 shadow-inner">
                   <div className="flex justify-between text-xs font-mono">
-                    <span className="text-white/40">AUCTION TIMER</span>
+                    <span className="text-white/75">AUCTION TIMER</span>
                     <span className="text-[#F5D061] font-bold">{auctionSecondsRemaining}s remaining</span>
                   </div>
-                  <div className="w-full bg-black/60 h-3.5 rounded-full overflow-hidden border border-white/[0.08]">
+                  <div className="w-full bg-[#1B1F29] h-3.5 rounded-full overflow-hidden border border-white/20">
                     <div
                       className="bg-gradient-to-r from-[#D4AF37] via-[#F5D061] to-rose-500 h-full transition-all duration-1000 shadow-[0_0_12px_rgba(212,175,55,0.4)]"
                       style={{ width: `${(auctionSecondsRemaining / auctionDurationSec) * 100}%` }}
@@ -380,7 +380,7 @@ export default function InteractiveSimulator() {
                     <button
                       onClick={() => setAuctionRunning(true)}
                       disabled={auctionSecondsRemaining === 0 || auctionPurchased}
-                      className="px-6 py-3 rounded-xl font-mono text-xs uppercase tracking-wider font-bold bg-[#D4AF37] text-black hover:bg-[#F5D061] hover:shadow-[0_0_25px_rgba(212,175,55,0.4)] transition-all flex items-center gap-2 cursor-pointer disabled:opacity-50 hover:-translate-y-0.5 active:scale-95"
+                      className="px-6 py-3 rounded-xl font-mono text-xs uppercase tracking-wider font-bold bg-[#D4AF37] text-black hover:bg-[#F5D061] hover:shadow-[0_0_25px_rgba(212,175,55,0.4)] transition-all flex items-center gap-2 cursor-pointer disabled:opacity-50"
                     >
                       <Play className="w-4 h-4 fill-current" />
                       <span>Start Auction Decay</span>
@@ -388,7 +388,7 @@ export default function InteractiveSimulator() {
                   ) : (
                     <button
                       onClick={() => setAuctionRunning(false)}
-                      className="px-6 py-3 rounded-xl font-mono text-xs uppercase tracking-wider font-bold bg-white/[0.08] text-white border border-white/[0.2] hover:bg-white/[0.12] flex items-center gap-2 cursor-pointer transition-all hover:-translate-y-0.5 active:scale-95"
+                      className="px-6 py-3 rounded-xl font-mono text-xs uppercase tracking-wider font-bold bg-white/[0.08] text-white border border-white/[0.2] hover:bg-white/[0.12] flex items-center gap-2 cursor-pointer transition-all"
                     >
                       <Pause className="w-4 h-4" />
                       <span>Pause Decay</span>
@@ -397,7 +397,7 @@ export default function InteractiveSimulator() {
 
                   <button
                     onClick={handleResetDutch}
-                    className="px-4 py-3 rounded-xl font-mono text-xs uppercase tracking-wider text-white/60 bg-black/40 border border-white/[0.08] hover:text-white hover:border-white/20 flex items-center gap-1.5 cursor-pointer transition-all hover:-translate-y-0.5 active:scale-95"
+                    className="px-4 py-3 rounded-xl font-mono text-xs uppercase tracking-wider text-white/75 bg-[#181B24] border border-white/20 hover:text-white hover:border-white/20 flex items-center gap-1.5 cursor-pointer transition-all"
                   >
                     <RotateCcw className="w-3.5 h-3.5" />
                     <span>Reset</span>
@@ -407,9 +407,9 @@ export default function InteractiveSimulator() {
 
               {/* Right: Live Ticker & Purchase Card */}
               <div className="lg:col-span-6">
-                <div className="bg-black/50 border border-white/[0.12] rounded-3xl p-6 sm:p-8 text-center relative overflow-hidden shadow-[0_20px_50px_rgba(0,0,0,0.85),inset_0_1px_0_rgba(255,255,255,0.15)]">
+                <div className="bg-[#171A23] border border-white/20 rounded-3xl p-6 sm:p-8 text-center relative overflow-hidden shadow-xl shadow-black/40">
                   
-                  <span className="text-xs font-mono tracking-widest text-white/40 uppercase block mb-1">
+                  <span className="text-xs font-mono tracking-widest text-white/75 uppercase block mb-1">
                     CURRENT DECAYING CLEARING PRICE
                   </span>
                   
@@ -417,12 +417,12 @@ export default function InteractiveSimulator() {
                     ₹{currentAuctionPrice.toLocaleString()}
                   </div>
 
-                  <div className="flex justify-center gap-6 text-xs font-mono text-white/50 mb-8">
+                  <div className="flex justify-center gap-6 text-xs font-mono text-white/75 mb-8">
                     <div>
                       <span className="block text-[10px]">CEILING</span>
                       <span className="text-rose-400 font-semibold">₹{initialAuctionPrice.toLocaleString()}</span>
                     </div>
-                    <div className="text-white/20 self-center">➔</div>
+                    <div className="text-white/75 self-center">➔</div>
                     <div>
                       <span className="block text-[10px]">RESERVE FLOOR</span>
                       <span className="text-emerald-400 font-semibold">₹{reserveFloorPrice.toLocaleString()}</span>
@@ -436,7 +436,7 @@ export default function InteractiveSimulator() {
                         <span>AUCTION WON & ATOMIC ESCROW LOCKED</span>
                       </div>
                       <p className="text-white/80">
-                        Purchased 1x VIP Eclipse Pass for <strong className="text-white">₹{auctionPurchased.price.toLocaleString()}</strong>. 
+                        Purchased 1x VIP Festival Pass for <strong className="text-white">₹{auctionPurchased.price.toLocaleString()}</strong>. 
                         You saved ₹{auctionPurchased.savings.toLocaleString()} off the initial ceiling!
                       </p>
                     </div>
@@ -444,10 +444,10 @@ export default function InteractiveSimulator() {
                     <button
                       onClick={handleBuyDutch}
                       disabled={auctionSecondsRemaining === 0}
-                      className="w-full py-4 rounded-2xl font-mono text-sm uppercase tracking-widest font-bold text-black bg-gradient-to-r from-emerald-500 via-emerald-400 to-emerald-300 hover:shadow-[0_0_35px_rgba(34,197,94,0.45)] transition-all cursor-pointer disabled:opacity-50 flex items-center justify-center gap-2 hover:-translate-y-0.5 active:scale-95"
+                      className="w-full py-4 rounded-2xl font-mono text-sm uppercase tracking-widest font-bold text-black bg-gradient-to-r from-emerald-500 via-emerald-400 to-emerald-300 hover:shadow-[0_0_35px_rgba(34,197,94,0.45)] transition-all cursor-pointer disabled:opacity-50 flex items-center justify-center gap-2"
                     >
                       <Zap className="w-4 h-4 fill-current" />
-                      <span>Strike & Buy at ₹{currentAuctionPrice.toLocaleString()}</span>
+                      <span>Buy Now at ₹{currentAuctionPrice.toLocaleString()}</span>
                     </button>
                   )}
 
@@ -464,21 +464,21 @@ export default function InteractiveSimulator() {
             <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
               
               <div className="lg:col-span-5 space-y-4">
-                <h3 className="font-cinzel font-bold text-2xl text-white">
+                <h3 className="font-sans font-bold text-2xl text-white">
                   Deterministic In-Memory FIFO Engine
                 </h3>
-                <p className="text-sm text-white/60 font-light leading-relaxed">
+                <p className="text-sm text-white/75 font-light leading-relaxed">
                   Orders in Darkhold are matched strictly using Price-Time Priority. Sub-millisecond timestamps ensure no bot or validator can reorder transactions (zero MEV).
                 </p>
 
                 <div className="pt-2 space-y-3">
-                  <div className="flex gap-2 p-1.5 rounded-2xl bg-black/40 border border-white/[0.06]">
+                  <div className="flex gap-2 p-1.5 rounded-2xl bg-[#181B24] border border-white/20">
                     <button
                       onClick={() => setIncomingType('MARKET_BUY')}
                       className={`flex-1 py-2.5 rounded-xl text-xs font-mono font-medium border transition-all cursor-pointer ${
                         incomingType === 'MARKET_BUY'
                           ? 'bg-emerald-500/20 border-emerald-500/50 text-emerald-300 shadow-[0_0_15px_rgba(34,197,94,0.2)]'
-                          : 'bg-transparent border-transparent text-white/40 hover:text-white'
+                          : 'bg-transparent border-transparent text-white/75 hover:text-white'
                       }`}
                     >
                       Market Buy (Fill Top Ask)
@@ -488,7 +488,7 @@ export default function InteractiveSimulator() {
                       className={`flex-1 py-2.5 rounded-xl text-xs font-mono font-medium border transition-all cursor-pointer ${
                         incomingType === 'LIMIT_BID'
                           ? 'bg-[#D4AF37]/20 border-[#D4AF37]/50 text-[#F5D061] shadow-[0_0_15px_rgba(212,175,55,0.2)]'
-                          : 'bg-transparent border-transparent text-white/40 hover:text-white'
+                          : 'bg-transparent border-transparent text-white/75 hover:text-white'
                       }`}
                     >
                       Limit Bid (Rest in Queue)
@@ -497,7 +497,7 @@ export default function InteractiveSimulator() {
 
                   <button
                     onClick={handlePushOrder}
-                    className="w-full py-3.5 rounded-xl font-mono text-xs uppercase tracking-wider font-bold bg-gradient-to-r from-[#D4AF37] to-[#F5D061] text-black hover:shadow-[0_0_25px_rgba(212,175,55,0.45)] transition-all cursor-pointer flex items-center justify-center gap-2 hover:-translate-y-0.5 active:scale-95"
+                    className="w-full py-3.5 rounded-xl font-mono text-xs uppercase tracking-wider font-bold bg-gradient-to-r from-[#D4AF37] to-[#F5D061] text-black hover:shadow-[0_0_25px_rgba(212,175,55,0.45)] transition-all cursor-pointer flex items-center justify-center gap-2"
                   >
                     <Cpu className="w-4 h-4 text-black" />
                     <span>Dispatch Order to Go Ring Buffer</span>
@@ -506,8 +506,8 @@ export default function InteractiveSimulator() {
               </div>
 
               {/* Right: Live Queue stream */}
-              <div className="lg:col-span-7 bg-black/50 border border-white/[0.08] rounded-3xl p-6 font-mono text-xs shadow-inner">
-                <div className="flex items-center justify-between pb-3.5 border-b border-white/[0.06] mb-3.5 text-white/50">
+              <div className="lg:col-span-7 bg-[#171A23] border border-white/20 rounded-3xl p-6 font-mono text-xs shadow-inner">
+                <div className="flex items-center justify-between pb-3.5 border-b border-white/20 mb-3.5 text-white/75">
                   <span>GO WORKER POOL · FIFO MATCH DISPATCH</span>
                   <span className="text-emerald-400 font-bold bg-emerald-500/10 border border-emerald-500/30 px-2 py-0.5 rounded-full text-[10px]">LOCK-FREE CONCURRENCY</span>
                 </div>
@@ -516,7 +516,7 @@ export default function InteractiveSimulator() {
                   {fifoLog.map((log) => (
                     <div
                       key={log.id}
-                      className="p-3.5 rounded-2xl bg-black/40 border border-white/[0.06] flex items-center justify-between gap-3 text-xs hover:border-white/[0.12] transition-colors"
+                      className="p-3.5 rounded-2xl bg-[#181B24] border border-white/20 flex items-center justify-between gap-3 text-xs hover:border-white/20 transition-colors"
                     >
                       <div>
                         <div className="flex items-center gap-2">
@@ -526,9 +526,9 @@ export default function InteractiveSimulator() {
                           }`}>
                             {log.type}
                           </span>
-                          <span className="text-white/40">{log.user}</span>
+                          <span className="text-white/75">{log.user}</span>
                         </div>
-                        <div className="text-[11px] text-white/50 mt-1">
+                        <div className="text-[11px] text-white/75 mt-1">
                           Price: ₹{log.price.toLocaleString()} · Qty: {log.qty} · Time: {log.time}
                         </div>
                       </div>
@@ -537,7 +537,7 @@ export default function InteractiveSimulator() {
                         <span className="px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-emerald-500/15 border border-emerald-500/30 text-emerald-400 block">
                           {log.status}
                         </span>
-                        <span className="text-[10px] text-white/30 mt-1 block">
+                        <span className="text-[10px] text-white/75 mt-1 block">
                           Latency: {log.latency}
                         </span>
                       </div>

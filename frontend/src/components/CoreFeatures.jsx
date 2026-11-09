@@ -7,8 +7,8 @@ export default function CoreFeatures() {
   const features = [
     {
       id: 1,
-      tier: 'pass',
-      tierLabel: 'FOUNDATIONAL PASS TIER',
+      tier: 'core',
+      tierLabel: 'CORE TRADING ENGINE',
       title: 'In-Memory FIFO Matching Engine',
       summary: 'Deterministic price-time priority order book built in Go with intrusive doubly-linked queues and red-black price levels, executing limit and market orders in sub-millisecond time.',
       specs: ['Sub-millisecond matching latency (< 1ms)', 'Price-Time priority (FIFO)', 'Limit & Market order support', 'Zero race condition mutexing'],
@@ -17,8 +17,8 @@ export default function CoreFeatures() {
     },
     {
       id: 2,
-      tier: 'pass',
-      tierLabel: 'FOUNDATIONAL PASS TIER',
+      tier: 'core',
+      tierLabel: 'CORE TRADING ENGINE',
       title: 'Dynamic Anti-Scalper Price Collars',
       summary: 'Dynamic price caps mathematically tethered to the original face value. Bids and asks outside the algorithmic collar are intercepted at engine ingress.',
       specs: ['Face-value algorithmic ceiling', 'Configurable band (+15% to +30%)', 'Pre-matching rejection (422)', 'Bot swarm throttling'],
@@ -27,8 +27,8 @@ export default function CoreFeatures() {
     },
     {
       id: 3,
-      tier: 'pass',
-      tierLabel: 'FOUNDATIONAL PASS TIER',
+      tier: 'core',
+      tierLabel: 'CORE TRADING ENGINE',
       title: 'Real-Time WebSocket L2 Depth',
       summary: 'Bidirectional binary WebSockets streaming Level 2 orderbook changes, cumulative depth curves, and spread updates without page refresh.',
       specs: ['Zero page-reload latency', 'Delta book compression', 'L2 Bids & Asks depth ladders', 'Sub-millisecond broadcast'],
@@ -37,8 +37,8 @@ export default function CoreFeatures() {
     },
     {
       id: 4,
-      tier: 'pass',
-      tierLabel: 'FOUNDATIONAL PASS TIER',
+      tier: 'core',
+      tierLabel: 'CORE TRADING ENGINE',
       title: 'Atomic Double-Entry Ledger',
       summary: 'Supabase PostgreSQL double-entry bookkeeping ledger guaranteeing mathematical balance conservation and zero phantom tokens.',
       specs: ['Strict debit-credit balance', 'Zero balance anomalies', 'ACID transaction boundary', 'Immutable audit trail'],
@@ -47,8 +47,8 @@ export default function CoreFeatures() {
     },
     {
       id: 5,
-      tier: 'victory',
-      tierLabel: 'ASCENDED VICTORY TIER',
+      tier: 'advanced',
+      tierLabel: 'AUTOMATION & SCALE',
       title: 'Automated Dutch Auction Engine',
       summary: 'Continuous price-decay engine allowing distressed sellers to liquidate passes over time. Prices decay gracefully until a bidder executes.',
       specs: ['Automated decay curves', 'Real-time bidding rounds', 'Distress sale liquidation', 'Anti-panic floor protection'],
@@ -57,8 +57,8 @@ export default function CoreFeatures() {
     },
     {
       id: 6,
-      tier: 'victory',
-      tierLabel: 'ASCENDED VICTORY TIER',
+      tier: 'advanced',
+      tierLabel: 'AUTOMATION & SCALE',
       title: '1,000+ OPS Stress Resilience',
       summary: 'Benchmarked with Locust and k6 under 1,000+ simulated simultaneous orders per second using lock-free data structures and worker pools.',
       specs: ['1,000+ orders/sec throughput', 'Lock-free Go channels', 'p99 latency < 15ms under load', 'k6/Locust stress suites'],
@@ -67,8 +67,8 @@ export default function CoreFeatures() {
     },
     {
       id: 7,
-      tier: 'victory',
-      tierLabel: 'ASCENDED VICTORY TIER',
+      tier: 'advanced',
+      tierLabel: 'AUTOMATION & SCALE',
       title: 'Proof of Solvency & Escrow Locks',
       summary: 'Cryptographic balance reconciliation where secondary funds remain locked in escrow until authentic ticket barcode verification is confirmed.',
       specs: ['Cryptographic escrow state machine', 'Ticket barcode verification', 'Proof of reserve checks', 'Instant dispute resolution'],
@@ -90,44 +90,44 @@ export default function CoreFeatures() {
           <Sparkles className="w-3.5 h-3.5 text-[#D4AF37]" />
           <span className="font-semibold tracking-wide">ENGINE SPECIFICATIONS · HIGH-CONCURRENCY ARCHITECTURE</span>
         </div>
-        <h2 className="font-cinzel font-black text-3xl sm:text-5xl text-white tracking-wide mb-4">
+        <h2 className="font-sans font-black text-3xl sm:text-5xl text-white tracking-wide mb-4">
           Core Engine Architecture
         </h2>
-        <p className="text-base sm:text-lg text-white/60 font-light">
+        <p className="text-base sm:text-lg text-white/75 font-light">
           Every component engineered for institutional secondary ticketing with sub-millisecond execution.
         </p>
 
         {/* Filter Pills (Spatial Segmented Control) */}
-        <div className="inline-flex justify-center items-center gap-1.5 p-1.5 rounded-2xl bg-black/50 border border-white/[0.08] mt-8 shadow-inner">
+        <div className="inline-flex justify-center items-center gap-1.5 p-1.5 rounded-2xl bg-[#171A23] border border-white/20 mt-8 shadow-inner">
           <button
             onClick={() => setActiveFilter('all')}
             className={`px-4 py-2 rounded-xl text-xs font-mono tracking-wider transition-all duration-300 cursor-pointer ${
               activeFilter === 'all'
-                ? 'bg-[#D4AF37] text-black font-bold shadow-[0_0_20px_rgba(212,175,55,0.4)] scale-[1.02]'
-                : 'bg-transparent text-white/50 hover:text-white'
+                ? 'bg-[#D4AF37] text-black font-bold shadow-[0_0_20px_rgba(212,175,55,0.4)]'
+                : 'bg-transparent text-white/75 hover:text-white'
             }`}
           >
-            ALL SPECIFICATIONS ({features.length})
+            ALL CAPABILITIES ({features.length})
           </button>
           <button
-            onClick={() => setActiveFilter('pass')}
+            onClick={() => setActiveFilter('core')}
             className={`px-4 py-2 rounded-xl text-xs font-mono tracking-wider transition-all duration-300 cursor-pointer ${
-              activeFilter === 'pass'
-                ? 'bg-[#D4AF37] text-black font-bold shadow-[0_0_20px_rgba(212,175,55,0.4)] scale-[1.02]'
-                : 'bg-transparent text-white/50 hover:text-white'
+              activeFilter === 'core'
+                ? 'bg-[#D4AF37] text-black font-bold shadow-[0_0_20px_rgba(212,175,55,0.4)]'
+                : 'bg-transparent text-white/75 hover:text-white'
             }`}
           >
-            FOUNDATIONAL (PASS TIER)
+            CORE ORDER ENGINE
           </button>
           <button
-            onClick={() => setActiveFilter('victory')}
+            onClick={() => setActiveFilter('advanced')}
             className={`px-4 py-2 rounded-xl text-xs font-mono tracking-wider transition-all duration-300 cursor-pointer ${
-              activeFilter === 'victory'
-                ? 'bg-rose-500 text-white font-bold shadow-[0_0_20px_rgba(239,68,68,0.4)] scale-[1.02]'
-                : 'bg-transparent text-white/50 hover:text-white'
+              activeFilter === 'advanced'
+                ? 'bg-rose-500 text-white font-bold shadow-[0_0_20px_rgba(239,68,68,0.4)]'
+                : 'bg-transparent text-white/75 hover:text-white'
             }`}
           >
-            ASCENDED (VICTORY TIER)
+            AUTOMATION & SCALE
           </button>
         </div>
       </div>
@@ -143,9 +143,9 @@ export default function CoreFeatures() {
             <div
               key={f.id}
               className={`rounded-3xl p-6 sm:p-7 flex flex-col justify-between group spatial-card ${
-                f.tier === 'victory' 
-                  ? 'hover:border-rose-500/50 hover:shadow-[0_28px_70px_-10px_rgba(0,0,0,0.98),0_0_35px_rgba(239,68,68,0.15)]' 
-                  : 'hover:border-[#D4AF37]/50 hover:shadow-[0_28px_70px_-10px_rgba(0,0,0,0.98),0_0_35px_rgba(212,175,55,0.15)]'
+                f.tier === 'advanced' 
+                  ? 'hover:border-rose-500/50 hover:shadow-xl shadow-black/40' 
+                  : 'hover:border-[#D4AF37]/50 hover:shadow-xl shadow-black/40'
               }`}
             >
               <div>
@@ -165,28 +165,28 @@ export default function CoreFeatures() {
 
                   <span
                     className={`text-[9px] font-mono tracking-wider px-3 py-1 rounded-full border uppercase font-bold ${
-                      f.tier === 'victory'
+                      f.tier === 'advanced'
                         ? 'bg-rose-500/15 border-rose-500/40 text-rose-400'
                         : 'bg-[#D4AF37]/15 border-[#D4AF37]/40 text-[#F5D061]'
                     }`}
                   >
-                    {f.tier === 'victory' ? 'Victory Tier' : 'Pass Tier'}
+                    {f.tier === 'advanced' ? 'Automation' : 'Core Engine'}
                   </span>
                 </div>
 
                 {/* Title */}
-                <h3 className="font-cinzel font-bold text-xl text-white mb-2 group-hover:text-[#F5D061] transition-colors">
+                <h3 className="font-sans font-bold text-xl text-white mb-2 group-hover:text-[#F5D061] transition-colors">
                   {f.title}
                 </h3>
 
                 {/* Summary */}
-                <p className="text-xs sm:text-sm text-white/50 leading-relaxed mb-6 font-light">
+                <p className="text-xs sm:text-sm text-white/75 leading-relaxed mb-6 font-light">
                   {f.summary}
                 </p>
               </div>
 
               {/* Technical Specifications checklist */}
-              <div className="pt-4 border-t border-white/[0.06] space-y-2">
+              <div className="pt-4 border-t border-white/20 space-y-2">
                 {f.specs.map((spec, i) => (
                   <div key={i} className="flex items-center gap-2 text-xs font-mono text-white/80">
                     <CheckCircle2
