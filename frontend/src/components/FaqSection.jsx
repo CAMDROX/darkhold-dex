@@ -1,5 +1,5 @@
 import React, { useState } from 'react'
-import { ChevronDown, HelpCircle, Shield, Cpu, Scale, Lock } from 'lucide-react'
+import { ChevronDown, HelpCircle } from 'lucide-react'
 
 export default function FaqSection() {
   const [openIdx, setOpenIdx] = useState(0)
@@ -30,43 +30,49 @@ export default function FaqSection() {
   return (
     <section className="relative py-20 px-4 sm:px-6 lg:px-8 max-w-5xl mx-auto">
       
-      <div className="text-center max-w-2xl mx-auto mb-16">
-        <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-[#181412] border border-[#D4AF37]/30 text-xs font-mono text-[#D4AF37] mb-4">
+      <div className="text-center max-w-2xl mx-auto mb-16 relative z-10">
+        <div className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-[#D4AF37]/10 border border-[#D4AF37]/30 text-xs font-mono text-[#F5D061] mb-4 shadow-[0_0_15px_rgba(212,175,55,0.15)]">
           <HelpCircle className="w-3.5 h-3.5 text-[#D4AF37]" />
-          <span>TECHNICAL & PROTOCOL FAQ</span>
+          <span className="font-semibold tracking-wide">TECHNICAL & PROTOCOL FAQ</span>
         </div>
         <h2 className="font-cinzel font-black text-3xl sm:text-5xl text-white tracking-wide mb-4">
           Frequently Answered
         </h2>
-        <p className="text-base sm:text-lg text-[#B8B2A6]">
+        <p className="text-base sm:text-lg text-white/60 font-light">
           Answers to the core architectural, financial, and anti-scalping mechanisms of Darkhold Exchange.
         </p>
       </div>
 
-      <div className="space-y-4">
+      <div className="space-y-4 relative z-10">
         {faqs.map((faq, idx) => {
           const isOpen = openIdx === idx
           return (
             <div
               key={idx}
-              className="gloss-panel rounded-2xl border-[#2A231F] overflow-hidden transition-all"
+              className={`rounded-3xl border transition-all duration-300 overflow-hidden ${
+                isOpen 
+                  ? 'spatial-glass border-[#D4AF37]/45 shadow-[0_20px_50px_rgba(0,0,0,0.9),0_0_25px_rgba(212,175,55,0.08)]' 
+                  : 'bg-black/40 border-white/[0.08] hover:border-white/[0.18]'
+              }`}
             >
               <button
                 onClick={() => setOpenIdx(isOpen ? -1 : idx)}
-                className="w-full p-6 text-left flex items-center justify-between gap-4 cursor-pointer hover:bg-[#1E1916]/40 transition-colors"
+                className="w-full p-6 text-left flex items-center justify-between gap-4 cursor-pointer transition-colors"
               >
-                <span className="font-cinzel font-bold text-base sm:text-lg text-white">
+                <span className={`font-cinzel font-bold text-base sm:text-lg transition-colors ${
+                  isOpen ? 'text-[#F5D061]' : 'text-white'
+                }`}>
                   {faq.q}
                 </span>
-                <ChevronDown
-                  className={`w-5 h-5 text-[#D4AF37] shrink-0 transition-transform duration-300 ${
-                    isOpen ? 'rotate-180' : ''
-                  }`}
-                />
+                <div className={`w-8 h-8 rounded-xl flex items-center justify-center shrink-0 transition-all duration-300 ${
+                  isOpen ? 'bg-[#D4AF37]/20 border border-[#D4AF37]/40 rotate-180' : 'bg-white/[0.04] border border-white/[0.08]'
+                }`}>
+                  <ChevronDown className="w-4 h-4 text-[#D4AF37]" />
+                </div>
               </button>
 
               {isOpen && (
-                <div className="px-6 pb-6 pt-1 text-sm text-[#C2BCB0] leading-relaxed border-t border-[#221B17] font-light">
+                <div className="px-6 pb-6 pt-1 text-sm text-white/70 leading-relaxed border-t border-white/[0.06] font-light">
                   {faq.a}
                 </div>
               )}

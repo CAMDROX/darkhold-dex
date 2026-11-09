@@ -14,6 +14,7 @@ import DashboardPage from './pages/DashboardPage'
 import AssetsPage from './pages/AssetsPage'
 import ProfilePage from './pages/ProfilePage'
 import AdminVerificationsPage from './pages/AdminVerificationsPage'
+import ErrorBoundary from './components/ErrorBoundary'
 
 // Protected Route wrapper
 function ProtectedRoute({ children }) {
@@ -51,7 +52,8 @@ function AppContent() {
       <div className="relative z-10 flex flex-col min-h-screen">
         {isAppRoute ? <AppNavbar /> : <Navbar />}
         <main className="flex-1">
-          <Routes>
+          <ErrorBoundary>
+            <Routes>
             <Route path="/" element={<LandingPage />} />
             <Route path="/login" element={<LoginPage />} />
             <Route path="/signup" element={<SignupPage />} />
@@ -94,22 +96,25 @@ function AppContent() {
             {/* Fallback */}
             <Route path="*" element={<Navigate to="/" replace />} />
           </Routes>
-        </main>
+        </ErrorBoundary>
+      </main>
         <Footer />
       </div>
 
-      {/* Glossy Darkhold Toaster Notifications */}
+      {/* Spatial Darkhold Toaster Notifications */}
       <Toaster
         position="top-right"
         toastOptions={{
           style: {
-            background: '#14100E',
+            background: 'rgba(12, 10, 9, 0.88)',
+            backdropFilter: 'blur(20px)',
             color: '#F4EDE0',
-            border: '1px solid rgba(212, 175, 55, 0.35)',
-            boxShadow: '0 10px 30px rgba(0, 0, 0, 0.8)',
+            border: '1px solid rgba(255, 255, 255, 0.08)',
+            boxShadow: '0 20px 45px rgba(0, 0, 0, 0.85), inset 0 1px 0 rgba(255, 255, 255, 0.1)',
             fontFamily: 'JetBrains Mono, monospace',
             fontSize: '12px',
-            borderRadius: '12px',
+            borderRadius: '16px',
+            padding: '12px 16px',
           },
           success: {
             iconTheme: {
@@ -123,8 +128,10 @@ function AppContent() {
               secondary: '#080706',
             },
             style: {
-              background: '#200D0D',
+              background: 'rgba(25, 10, 10, 0.9)',
+              backdropFilter: 'blur(20px)',
               border: '1px solid rgba(239, 68, 68, 0.4)',
+              boxShadow: '0 20px 45px rgba(0, 0, 0, 0.85), inset 0 1px 0 rgba(239, 68, 68, 0.2)',
               color: '#FCA5A5',
             },
           },

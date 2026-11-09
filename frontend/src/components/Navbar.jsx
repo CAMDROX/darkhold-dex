@@ -2,8 +2,7 @@ import React, { useState, useRef, useEffect } from 'react'
 import { Link, useLocation } from 'react-router-dom'
 import { useAuth } from '../context/AuthContext'
 import { 
-  Shield, Cpu, Activity, Menu, X, ArrowUpRight, Lock, 
-  Sparkles, ExternalLink, User, LogOut, ChevronDown, Layers,
+  Menu, X, ArrowUpRight, User, LogOut, ChevronDown, Layers,
   ShieldCheck, ShieldAlert, Clock, Crown
 } from 'lucide-react'
 
@@ -37,12 +36,12 @@ export default function Navbar() {
   ]
 
   return (
-    <header className="sticky top-0 z-50 backdrop-blur-xl bg-[#080706]/90 border-b border-[#D4AF37]/20 transition-all duration-300">
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-20 flex items-center justify-between">
+    <header className="sticky top-0 z-50 w-full px-3 sm:px-6 lg:px-8 pt-3 pb-2 transition-all duration-300">
+      <div className="max-w-7xl mx-auto rounded-2xl spatial-glass px-4 sm:px-6 h-16 flex items-center justify-between relative shadow-[0_16px_40px_-10px_rgba(0,0,0,0.85),0_0_25px_rgba(212,175,55,0.05),inset_0_1px_0_rgba(255,255,255,0.1)]">
         
-        {/* Brand Logo & Sigil */}
-        <Link to="/" className="flex items-center gap-3 group">
-          <div className="relative w-10 h-10 rounded-lg bg-gradient-to-br from-[#1C1714] to-[#0E0C0B] border border-[#D4AF37]/40 flex items-center justify-center p-2 shadow-[0_0_15px_rgba(212,175,55,0.2)] group-hover:border-[#D4AF37] group-hover:shadow-[0_0_25px_rgba(212,175,55,0.4)] transition-all">
+        {/* Brand Logo & Sigil (Preserving Identity) */}
+        <Link to="/" className="flex items-center gap-3 group transition-transform duration-300 hover:scale-[1.01]">
+          <div className="relative w-9 h-9 rounded-xl bg-gradient-to-br from-[#241B15] to-[#0D0B0A] border border-[#D4AF37]/45 flex items-center justify-center p-1.5 shadow-[0_0_18px_rgba(212,175,55,0.25),inset_0_1px_0_rgba(255,255,255,0.15)] group-hover:border-[#D4AF37] group-hover:shadow-[0_0_24px_rgba(212,175,55,0.45)] group-hover:scale-105 transition-all duration-300">
             <svg viewBox="0 0 100 100" className="w-full h-full">
               <circle cx="50" cy="50" r="44" fill="none" stroke="#D4AF37" strokeWidth="6" strokeDasharray="6 3" />
               <polygon points="50,16 80,72 20,72" fill="none" stroke="#D4AF37" strokeWidth="6" />
@@ -52,14 +51,14 @@ export default function Navbar() {
           </div>
           <div>
             <div className="flex items-center gap-2">
-              <span className="font-cinzel font-black tracking-widest text-lg sm:text-xl text-transparent bg-clip-text bg-gradient-to-r from-[#FFF] via-[#F5D061] to-[#D4AF37]">
+              <span className="font-cinzel font-black tracking-widest text-base sm:text-lg text-transparent bg-clip-text bg-gradient-to-r from-white via-[#F5D061] to-[#D4AF37]">
                 DARKHOLD
               </span>
-              <span className="px-1.5 py-0.5 text-[10px] font-mono tracking-wider bg-[#EF4444]/20 border border-[#EF4444]/40 text-[#EF4444] rounded">
+              <span className="px-1.5 py-0.5 text-[9px] font-mono tracking-wider bg-[#EF4444]/20 border border-[#EF4444]/40 text-[#EF4444] rounded font-bold">
                 DEX
               </span>
             </div>
-            <p className="text-[10px] font-mono tracking-wider text-[#A39E93] -mt-0.5">
+            <p className="text-[9px] font-mono tracking-wider text-white/50 -mt-0.5">
               HIGH-FREQUENCY SECONDARY MARKET
             </p>
           </div>
@@ -71,7 +70,7 @@ export default function Navbar() {
             <a
               key={link.name}
               href={link.href}
-              className="px-3 py-2 rounded-lg text-xs font-mono font-medium text-[#C2BCB0] hover:text-[#FFF] hover:bg-[#1E1916]/60 transition-colors"
+              className="px-3 py-1.5 rounded-xl text-xs font-mono font-medium text-white/60 hover:text-white hover:bg-white/[0.04] transition-all duration-200 hover:-translate-y-0.5"
             >
               {link.name}
             </a>
@@ -79,7 +78,7 @@ export default function Navbar() {
           {isAuthenticated && (
             <Link
               to="/dashboard"
-              className="px-3 py-2 rounded-lg text-xs font-mono font-semibold text-[#F5D061] hover:text-[#FFF] hover:bg-[#1E1916]/60 transition-colors"
+              className="px-3.5 py-1.5 rounded-xl text-xs font-mono font-semibold text-[#F5D061] bg-[#D4AF37]/15 border border-[#D4AF37]/40 hover:bg-[#D4AF37]/25 transition-all duration-200 hover:-translate-y-0.5 shadow-sm"
             >
               Dashboard
             </Link>
@@ -90,27 +89,27 @@ export default function Navbar() {
         <div className="hidden md:flex items-center gap-3">
           
           {/* Engine Status Tag */}
-          <div className="hidden xl:flex items-center gap-2 px-3 py-1.5 rounded-full bg-[#14100E] border border-[#22C55E]/30 text-xs font-mono text-[#E5E0D8]">
+          <div className="hidden xl:flex items-center gap-2 px-3 py-1 rounded-full bg-white/[0.03] border border-white/[0.08] text-xs font-mono text-white/70 shadow-sm">
             <span className="relative flex h-2 w-2">
               <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-[#22C55E] opacity-75"></span>
               <span className="relative inline-flex rounded-full h-2 w-2 bg-[#22C55E]"></span>
             </span>
-            <span className="text-[#A39E93]">ENGINE:</span>
-            <span className="text-[#22C55E] font-medium">INSTANT MATCHING</span>
+            <span className="text-white/40 text-[10px]">ENGINE:</span>
+            <span className="text-[#22C55E] font-medium text-[11px]">INSTANT FIFO</span>
           </div>
 
           {!isAuthenticated ? (
             /* Unauthenticated state: Sign In & Sign Up buttons */
-            <div className="flex items-center gap-2.5">
+            <div className="flex items-center gap-2">
               <Link
                 to="/login"
-                className="px-4 py-2 rounded-xl text-xs font-mono font-medium text-[#C2BCB0] hover:text-white hover:bg-[#1E1916] transition-all border border-transparent hover:border-[#2D2520]"
+                className="px-4 py-2 rounded-xl text-xs font-mono font-medium text-white/70 hover:text-white hover:bg-white/[0.06] transition-all border border-transparent hover:border-white/[0.08] hover:-translate-y-0.5"
               >
                 Sign In
               </Link>
               <Link
                 to="/signup"
-                className="relative group overflow-hidden px-4 py-2 rounded-xl font-medium text-xs tracking-wider uppercase font-mono text-[#0B0908] bg-gradient-to-r from-[#D4AF37] via-[#F5D061] to-[#E5C378] hover:shadow-[0_0_20px_rgba(212,175,55,0.4)] transition-all flex items-center gap-1.5"
+                className="relative group overflow-hidden px-4 py-2 rounded-xl font-medium text-xs tracking-wider uppercase font-mono text-black bg-gradient-to-r from-[#D4AF37] via-[#F5D061] to-[#D4AF37] hover:shadow-[0_0_20px_rgba(212,175,55,0.4)] transition-all duration-300 flex items-center gap-1.5 hover:-translate-y-0.5 shadow-md"
               >
                 <span>Sign Up</span>
                 <ArrowUpRight className="w-3.5 h-3.5 transition-transform group-hover:translate-x-0.5 group-hover:-translate-y-0.5" />
@@ -121,9 +120,11 @@ export default function Navbar() {
             <div className="relative" ref={profileDropdownRef}>
               <button
                 onClick={() => setProfileDropdownOpen(!profileDropdownOpen)}
-                className="flex items-center gap-2.5 px-3 py-1.5 rounded-xl bg-[#181412] border border-[#D4AF37]/40 hover:border-[#D4AF37] transition-all cursor-pointer shadow-[0_0_15px_rgba(212,175,55,0.15)]"
+                className={`flex items-center gap-2.5 px-3 py-1.5 rounded-xl bg-white/[0.03] hover:bg-white/[0.06] border transition-all duration-300 cursor-pointer shadow-[0_4px_16px_rgba(0,0,0,0.5),inset_0_1px_0_rgba(255,255,255,0.08)] hover:-translate-y-0.5 active:scale-95 ${
+                  profileDropdownOpen ? 'border-[#D4AF37]/60 shadow-[0_0_20px_rgba(212,175,55,0.2)]' : 'border-white/[0.08] hover:border-[#D4AF37]/40'
+                }`}
               >
-                <div className="w-7 h-7 rounded-lg bg-[#2A211B] border border-[#D4AF37]/50 flex items-center justify-center font-cinzel font-bold text-xs text-[#F5D061]">
+                <div className="w-7 h-7 rounded-lg bg-gradient-to-br from-[#2A211B] to-[#120E0C] border border-[#D4AF37]/50 flex items-center justify-center font-cinzel font-bold text-xs text-[#F5D061]">
                   {user?.username ? user.username.charAt(0).toUpperCase() : 'U'}
                 </div>
                 <div className="text-left hidden sm:block">
@@ -146,7 +147,7 @@ export default function Navbar() {
                   ) : user?.kyc_status === 'pending' ? (
                     <span className="block text-[10px] font-mono text-[#F5D061] leading-tight flex items-center gap-1">
                       <Clock className="w-2.5 h-2.5" />
-                      <span>Pending Review</span>
+                      <span>Pending</span>
                     </span>
                   ) : (
                     <span className="block text-[10px] font-mono text-[#FB923C] leading-tight flex items-center gap-1">
@@ -155,20 +156,20 @@ export default function Navbar() {
                     </span>
                   )}
                 </div>
-                <ChevronDown className="w-3.5 h-3.5 text-[#D4AF37]" />
+                <ChevronDown className={`w-3.5 h-3.5 text-[#D4AF37] transition-transform duration-300 ${profileDropdownOpen ? 'rotate-180 text-[#F5D061]' : ''}`} />
               </button>
 
-              {/* Profile Dropdown Menu */}
+              {/* Profile Dropdown Menu (Spatial Popover) */}
               {profileDropdownOpen && (
-                <div className="absolute right-0 mt-2 w-72 rounded-2xl bg-[#0D0B0A] border border-[#D4AF37]/30 shadow-[0_15px_40px_rgba(0,0,0,0.85)] p-2 z-50 space-y-1">
-                  <div className="px-3 py-2.5 border-b border-[#241E19] mb-1">
+                <div className="absolute right-0 mt-3 w-76 rounded-2xl bg-[#0D0A08]/92 backdrop-blur-2xl border border-white/[0.12] spatial-popover p-2.5 z-50 space-y-1.5">
+                  <div className="px-3.5 py-3 border border-white/[0.06] bg-white/[0.03] rounded-xl shadow-[inset_0_1px_0_rgba(255,255,255,0.06)]">
                     <div className="flex items-center justify-between">
                       <p className="text-xs font-mono font-bold text-white truncate">{user?.username}</p>
-                      <span className="text-[9px] font-mono uppercase px-1.5 py-0.5 rounded bg-[#1C1613] border border-[#3A2D25] text-[#D4AF37]">
+                      <span className="text-[9px] font-mono uppercase px-2 py-0.5 rounded-md border font-semibold bg-[#D4AF37]/20 border-[#D4AF37]/50 text-[#F5D061]">
                         {user?.role === 'admin' ? '👑 Admin' : 'Trader'}
                       </span>
                     </div>
-                    <p className="text-[11px] font-mono text-[#8E867A] truncate mt-0.5">{user?.email}</p>
+                    <p className="text-[11px] font-mono text-white/50 truncate mt-0.5">{user?.email}</p>
                   </div>
 
                   {/* Admin Portal Link */}
@@ -176,7 +177,7 @@ export default function Navbar() {
                     <Link
                       to="/admin/verifications"
                       onClick={() => setProfileDropdownOpen(false)}
-                      className="flex items-center gap-2.5 px-3 py-2 rounded-lg text-xs font-mono text-[#F5D061] bg-[#D4AF37]/10 border border-[#D4AF37]/30 hover:bg-[#D4AF37]/20 transition-all font-semibold"
+                      className="flex items-center gap-2.5 px-3 py-2 rounded-xl text-xs font-mono text-[#F5D061] bg-[#D4AF37]/10 border border-[#D4AF37]/35 hover:bg-[#D4AF37]/20 hover:-translate-y-0.5 transition-all duration-200 font-semibold shadow-[0_2px_8px_rgba(212,175,55,0.15)]"
                     >
                       <Crown className="w-4 h-4 text-[#F5D061]" />
                       <span>Compliance KYC Review</span>
@@ -186,7 +187,7 @@ export default function Navbar() {
                   <Link
                     to="/dashboard"
                     onClick={() => setProfileDropdownOpen(false)}
-                    className="flex items-center gap-2.5 px-3 py-2 rounded-lg text-xs font-mono text-[#D1C9BE] hover:text-white hover:bg-[#1E1916] transition-colors"
+                    className="flex items-center gap-2.5 px-3 py-2 rounded-xl text-xs font-mono text-white/80 hover:text-white hover:bg-white/[0.06] border border-transparent hover:border-white/[0.08] hover:-translate-y-0.5 transition-all duration-200"
                   >
                     <Layers className="w-4 h-4 text-[#D4AF37]" />
                     <span>Trading Dashboard</span>
@@ -195,19 +196,19 @@ export default function Navbar() {
                   <Link
                     to="/profile"
                     onClick={() => setProfileDropdownOpen(false)}
-                    className="flex items-center gap-2.5 px-3 py-2 rounded-lg text-xs font-mono text-[#D1C9BE] hover:text-white hover:bg-[#1E1916] transition-colors"
+                    className="flex items-center gap-2.5 px-3 py-2 rounded-xl text-xs font-mono text-white/80 hover:text-white hover:bg-white/[0.06] border border-transparent hover:border-white/[0.08] hover:-translate-y-0.5 transition-all duration-200"
                   >
                     <User className="w-4 h-4 text-[#F5D061]" />
                     <span>Profile & Active Sessions</span>
                   </Link>
 
-                  <div className="pt-1 border-t border-[#241E19]">
+                  <div className="pt-1.5 border-t border-white/[0.06]">
                     <button
                       onClick={() => {
                         setProfileDropdownOpen(false)
                         logout()
                       }}
-                      className="w-full flex items-center gap-2.5 px-3 py-2 rounded-lg text-xs font-mono text-[#EF4444] hover:bg-[#291010] transition-colors cursor-pointer text-left"
+                      className="w-full flex items-center gap-2.5 px-3 py-2 rounded-xl text-xs font-mono text-[#EF4444] bg-[#EF4444]/5 hover:bg-[#EF4444]/15 border border-transparent hover:border-[#EF4444]/30 hover:-translate-y-0.5 transition-all duration-200 cursor-pointer text-left"
                     >
                       <LogOut className="w-4 h-4" />
                       <span>Sign Out</span>
@@ -223,17 +224,17 @@ export default function Navbar() {
         {/* Mobile menu toggle */}
         <button
           onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
-          className="lg:hidden p-2 rounded-lg bg-[#181412] border border-[#D4AF37]/30 text-[#D4AF37] hover:bg-[#221C18]"
+          className="lg:hidden p-2 rounded-xl bg-white/[0.03] hover:bg-white/[0.08] border border-white/[0.08] text-[#D4AF37] cursor-pointer transition-all hover:scale-105 active:scale-95"
           aria-label="Toggle Navigation Menu"
         >
-          {mobileMenuOpen ? <X className="w-6 h-6" /> : <Menu className="w-6 h-6" />}
+          {mobileMenuOpen ? <X className="w-5 h-5" /> : <Menu className="w-5 h-5" />}
         </button>
       </div>
 
-      {/* Mobile Drawer Menu */}
+      {/* Mobile Drawer Menu (Spatial Drop) */}
       {mobileMenuOpen && (
-        <div className="lg:hidden bg-[#0D0B0A]/95 border-b border-[#D4AF37]/30 px-4 pt-3 pb-6 space-y-3">
-          <div className="flex items-center justify-between pb-3 border-b border-[#2A231F]">
+        <div className="lg:hidden mt-2 rounded-2xl spatial-glass p-4 space-y-3 animate-spatial-pop">
+          <div className="flex items-center justify-between pb-3 border-b border-white/[0.08]">
             <div className="flex items-center gap-2 text-xs font-mono text-[#22C55E]">
               <span className="w-2 h-2 rounded-full bg-[#22C55E] animate-pulse"></span>
               Go In-Memory FIFO Engine Active
@@ -244,26 +245,26 @@ export default function Navbar() {
               key={link.name}
               href={link.href}
               onClick={() => setMobileMenuOpen(false)}
-              className="block px-3 py-2 rounded-lg text-sm font-medium text-[#DCD6CA] hover:text-[#FFF] hover:bg-[#1E1916]"
+              className="block px-3 py-2 rounded-xl text-sm font-medium text-white/80 hover:text-white hover:bg-white/[0.04]"
             >
               {link.name}
             </a>
           ))}
 
-          <div className="pt-3 border-t border-[#241E19] space-y-2">
+          <div className="pt-3 border-t border-white/[0.08] space-y-2">
             {!isAuthenticated ? (
               <>
                 <Link
                   to="/login"
                   onClick={() => setMobileMenuOpen(false)}
-                  className="w-full text-center block px-4 py-2.5 rounded-xl font-mono text-xs tracking-wider uppercase font-semibold text-white bg-[#181412] border border-[#2D2520]"
+                  className="w-full text-center block px-4 py-2.5 rounded-xl font-mono text-xs tracking-wider uppercase font-semibold text-white bg-white/[0.04] border border-white/[0.08]"
                 >
                   Sign In
                 </Link>
                 <Link
                   to="/signup"
                   onClick={() => setMobileMenuOpen(false)}
-                  className="w-full text-center block px-4 py-2.5 rounded-xl font-mono text-xs tracking-wider uppercase font-bold text-[#0B0908] bg-gradient-to-r from-[#D4AF37] to-[#F5D061]"
+                  className="w-full text-center block px-4 py-2.5 rounded-xl font-mono text-xs tracking-wider uppercase font-bold text-black bg-gradient-to-r from-[#D4AF37] to-[#F5D061]"
                 >
                   Create Account (Sign Up)
                 </Link>
@@ -273,14 +274,14 @@ export default function Navbar() {
                 <Link
                   to="/dashboard"
                   onClick={() => setMobileMenuOpen(false)}
-                  className="w-full text-center block px-4 py-2.5 rounded-xl font-mono text-xs tracking-wider uppercase font-semibold text-[#F5D061] bg-[#181412] border border-[#D4AF37]/40"
+                  className="w-full text-center block px-4 py-2.5 rounded-xl font-mono text-xs tracking-wider uppercase font-semibold text-[#F5D061] bg-[#D4AF37]/15 border border-[#D4AF37]/40"
                 >
                   Open Dashboard
                 </Link>
                 <Link
                   to="/profile"
                   onClick={() => setMobileMenuOpen(false)}
-                  className="w-full text-center block px-4 py-2.5 rounded-xl font-mono text-xs tracking-wider uppercase font-semibold text-white bg-[#181412] border border-[#2D2520]"
+                  className="w-full text-center block px-4 py-2.5 rounded-xl font-mono text-xs tracking-wider uppercase font-semibold text-white bg-white/[0.04] border border-white/[0.08]"
                 >
                   Profile & Sessions
                 </Link>
@@ -289,7 +290,7 @@ export default function Navbar() {
                     setMobileMenuOpen(false)
                     logout()
                   }}
-                  className="w-full text-center block px-4 py-2 rounded-xl font-mono text-xs text-[#EF4444] bg-[#291010] border border-[#EF4444]/30"
+                  className="w-full text-center block px-4 py-2 rounded-xl font-mono text-xs text-[#EF4444] bg-[#EF4444]/10 border border-[#EF4444]/30"
                 >
                   Sign Out
                 </button>

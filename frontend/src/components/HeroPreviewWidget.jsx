@@ -1,5 +1,19 @@
-import React, { useState, useEffect } from 'react'
-import { AlertTriangle, CheckCircle2, TrendingUp, ShieldAlert, Zap, Clock, ShieldCheck, Flame, ArrowRight, Play, RefreshCw, BarChart2, Activity } from 'lucide-react'
+import React, { useState } from 'react'
+import {
+  AlertTriangle,
+  CheckCircle2,
+  TrendingUp,
+  ShieldAlert,
+  Zap,
+  Clock,
+  ShieldCheck,
+  Flame,
+  ArrowRight,
+  Play,
+  RefreshCw,
+  BarChart2,
+  Activity,
+} from 'lucide-react'
 
 export default function HeroPreviewWidget() {
   const [bids, setBids] = useState([
@@ -33,7 +47,6 @@ export default function HeroPreviewWidget() {
   ])
 
   const [bannerAlert, setBannerAlert] = useState(null)
-  const [activeTab, setActiveTab] = useState('orderbook') // 'orderbook' | 'trades'
 
   // Face Value & Collar Specs
   const FACE_VALUE = 2000
@@ -54,14 +67,14 @@ export default function HeroPreviewWidget() {
       latency: '0.4ms',
     })
 
-    setActivityFeed(prev => [
+    setActivityFeed((prev) => [
       {
         id: Date.now(),
         time: now,
         msg: `[BLOCKED: HTTP 422] Scalper bot ask ₹8,500 rejected by dynamic price collar (Max cap: ₹2,500)`,
-        type: 'alert'
+        type: 'alert',
       },
-      ...prev.slice(0, 7)
+      ...prev.slice(0, 7),
     ])
   }
 
@@ -83,68 +96,71 @@ export default function HeroPreviewWidget() {
       price: orderPrice,
       qty: 1,
       buyer: 'Fan_8829 (You)',
-      seller: asks[0]?.user || 'Vesper Thorn'
+      seller: asks[0]?.user || 'Vesper Thorn',
     }
 
-    setRecentTrades(prev => [newTrade, ...prev.slice(0, 5)])
+    setRecentTrades((prev) => [newTrade, ...prev.slice(0, 5)])
 
-    setActivityFeed(prev => [
+    setActivityFeed((prev) => [
       {
         id: Date.now(),
         time: now,
         msg: `Fan_8829 bought at market: 1/1 filled @ ₹${orderPrice} in 3.4ms (Atomic Settlement)`,
-        type: 'success'
+        type: 'success',
       },
-      ...prev.slice(0, 7)
+      ...prev.slice(0, 7),
     ])
   }
 
-  // Reset demo state
   const handleReset = () => {
     setBannerAlert(null)
   }
 
   return (
-    <section className="relative -mt-6 sm:-mt-10 px-4 sm:px-6 lg:px-8 max-w-7xl mx-auto z-20 pb-20">
+    <section className="relative px-4 sm:px-6 lg:px-8 max-w-7xl mx-auto -mt-6 sm:-mt-8 mb-20 z-20">
       
-      {/* Container Frame with Golden Arcane Border & Glossy Glass */}
-      <div className="relative rounded-2xl gloss-panel border border-[#D4AF37]/30 shadow-[0_25px_60px_-15px_rgba(0,0,0,0.9),0_0_35px_rgba(212,175,55,0.1)] overflow-hidden">
+      {/* Ambient Atmospheric Cones */}
+      <div className="absolute top-1/2 left-1/4 -translate-y-1/2 w-96 h-96 bg-[#D4AF37]/10 rounded-full blur-3xl pointer-events-none" />
+      <div className="absolute top-1/2 right-1/4 -translate-y-1/2 w-96 h-96 bg-rose-500/10 rounded-full blur-3xl pointer-events-none" />
+
+      {/* Container Frame with Golden Arcane Border & Spatial Glass */}
+      <div className="relative rounded-3xl spatial-glass border border-white/[0.12] shadow-[0_30px_80px_-15px_rgba(0,0,0,0.95),0_0_40px_rgba(212,175,55,0.08),inset_0_1px_0_rgba(255,255,255,0.2)] overflow-hidden transition-all duration-300">
         
-        {/* Top Header Bar mirroring Lovable dashboard reference */}
-        <div className="px-5 py-4 border-b border-[#28211C] bg-[#110D0B]/80 flex flex-wrap items-center justify-between gap-4">
+        {/* Top Header Bar mirroring Spatial Cockpit */}
+        <div className="px-5 py-4 border-b border-white/[0.08] bg-black/40 backdrop-blur-xl flex flex-wrap items-center justify-between gap-4">
           
           <div className="flex items-center gap-3">
-            <span className="w-2.5 h-2.5 rounded-full bg-[#EF4444] animate-ping" />
+            <span className="w-2.5 h-2.5 rounded-full bg-rose-500 animate-ping" />
             <div>
               <div className="flex items-center gap-2">
                 <span className="font-cinzel font-bold text-sm sm:text-base tracking-wider text-white">
                   Eclipse Festival — General Admission
                 </span>
-                <span className="px-2 py-0.5 text-[10px] font-mono tracking-wider bg-[#D4AF37]/15 border border-[#D4AF37]/30 text-[#F5D061] rounded">
+                <span className="px-2 py-0.5 text-[10px] font-mono tracking-wider bg-[#D4AF37]/15 border border-[#D4AF37]/40 text-[#F5D061] rounded-full shadow-[0_0_12px_rgba(212,175,55,0.2)]">
                   DEMO MODE
                 </span>
               </div>
-              <p className="text-xs font-mono text-[#9B9487]">
-                Obsidian Fields · Face Value <span className="text-[#F5D061] font-semibold">₹2,000.00</span> · Dynamic Collar Cap <span className="text-[#EF4444] font-semibold">₹2,500.00</span> (+25%)
+              <p className="text-xs font-mono text-white/50 mt-0.5">
+                Obsidian Fields · Face Value <span className="text-[#F5D061] font-semibold">₹2,000.00</span> · Dynamic Collar Cap <span className="text-rose-400 font-semibold">₹2,500.00</span> (+25%)
               </p>
             </div>
           </div>
 
           {/* Interactive Playground Control Pills */}
-          <div className="flex flex-wrap items-center gap-2">
+          <div className="flex flex-wrap items-center gap-2.5">
             <button
               onClick={handleScalperAttack}
-              className="px-3.5 py-1.5 rounded-lg text-xs font-mono font-medium tracking-wide bg-[#EF4444]/20 border border-[#EF4444]/60 text-[#FCA5A5] hover:bg-[#EF4444]/30 hover:border-[#EF4444] transition-all flex items-center gap-2 shadow-[0_0_15px_rgba(239,68,68,0.2)] cursor-pointer"
+              className="px-4 py-2 rounded-xl text-xs font-mono font-medium tracking-wide bg-rose-500/15 border border-rose-500/50 text-rose-300 hover:bg-rose-500/25 hover:border-rose-400 transition-all duration-300 flex items-center gap-2 shadow-[0_0_20px_rgba(239,68,68,0.2)] cursor-pointer hover:-translate-y-0.5 active:scale-95"
             >
-              <ShieldAlert className="w-3.5 h-3.5 text-[#EF4444]" />
+              <ShieldAlert className="w-4 h-4 text-rose-400" />
               <span>Simulate Scalper Bot (₹8,500)</span>
             </button>
 
             <button
               onClick={handleFairOrder}
-              className="px-3.5 py-1.5 rounded-lg text-xs font-mono font-medium tracking-wide bg-[#22C55E]/20 border border-[#22C55E]/60 text-[#86EFAC] hover:bg-[#22C55E]/30 hover:border-[#22C55E] transition-all flex items-center gap-2 shadow-[0_0_15px_rgba(34,197,94,0.2)] cursor-pointer"
+              className="px-4 py-2 rounded-xl text-xs font-mono font-medium tracking-wide bg-emerald-500/15 border border-emerald-500/50 text-emerald-300 hover:bg-emerald-500/25 hover:border-emerald-400 transition-all duration-300 flex items-center gap-2 shadow-[0_0_20px_rgba(34,197,94,0.2)] cursor-pointer hover:-translate-y-0.5 active:scale-95"
             >
-              <Zap className="w-3.5 h-3.5 text-[#22C55E]" />
+              <Zap className="w-4 h-4 text-emerald-400" />
               <span>Submit Fair Buy (₹2,300)</span>
             </button>
           </div>
@@ -152,97 +168,97 @@ export default function HeroPreviewWidget() {
 
         {/* Dynamic Engine Notification Alert Banner */}
         {bannerAlert && (
-          <div className={`px-5 py-3 border-b transition-all flex items-start justify-between gap-3 ${
+          <div className={`px-5 py-3.5 border-b transition-all flex items-start justify-between gap-3 animate-spatial-pop ${
             bannerAlert.type === 'scalper_blocked' 
-              ? 'bg-[#291010]/95 border-[#EF4444]/60 text-red-200' 
-              : 'bg-[#0E2314]/95 border-[#22C55E]/60 text-green-200'
+              ? 'bg-rose-950/60 border-rose-500/50 text-rose-200' 
+              : 'bg-emerald-950/60 border-emerald-500/50 text-emerald-200'
           }`}>
             <div className="flex items-start gap-3">
               {bannerAlert.type === 'scalper_blocked' ? (
-                <ShieldAlert className="w-5 h-5 text-[#EF4444] mt-0.5 shrink-0" />
+                <ShieldAlert className="w-5 h-5 text-rose-400 mt-0.5 shrink-0" />
               ) : (
-                <CheckCircle2 className="w-5 h-5 text-[#22C55E] mt-0.5 shrink-0" />
+                <CheckCircle2 className="w-5 h-5 text-emerald-400 mt-0.5 shrink-0" />
               )}
               <div>
                 <div className="font-mono text-xs font-bold tracking-wider flex items-center gap-2">
                   <span>{bannerAlert.title}</span>
-                  <span className="px-1.5 py-0.2 bg-black/40 rounded text-[10px] font-mono">
+                  <span className="px-2 py-0.5 bg-black/60 border border-white/[0.1] rounded text-[10px] font-mono">
                     LATENCY: {bannerAlert.latency}
                   </span>
                 </div>
-                <p className="text-xs mt-1 text-[#E5E0D8]/90 font-light leading-relaxed">
+                <p className="text-xs mt-1 text-white/80 font-light leading-relaxed">
                   {bannerAlert.details}
                 </p>
               </div>
             </div>
             <button 
               onClick={handleReset} 
-              className="text-xs font-mono opacity-70 hover:opacity-100 px-2 py-1 rounded bg-black/30 hover:bg-black/50"
+              className="text-xs font-mono opacity-70 hover:opacity-100 px-2.5 py-1 rounded-lg bg-black/40 hover:bg-black/60 border border-white/[0.1] transition-all cursor-pointer"
             >
               Dismiss
             </button>
           </div>
         )}
 
-        {/* Top Ticker Stats Grid - Exact structure from user's screenshot */}
-        <div className="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-8 divide-x divide-y lg:divide-y-0 divide-[#241E19] bg-[#0E0B09]/90 border-b border-[#241E19]">
+        {/* Top Ticker Stats Grid - Sunken Spatial Compartments */}
+        <div className="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-8 divide-x divide-y lg:divide-y-0 divide-white/[0.06] bg-black/50 border-b border-white/[0.08]">
           
-          <div className="p-3.5 sm:p-4">
-            <span className="text-[10px] font-mono tracking-wider text-[#8E867A] block mb-1">BEST BID</span>
-            <span className="text-lg sm:text-xl font-mono font-bold text-[#22C55E]">
-              ₹{bestBid.toLocaleString()}
+          <div className="p-3.5 sm:p-4 hover:bg-white/[0.02] transition-colors">
+            <span className="text-[10px] font-mono tracking-widest text-white/40 block mb-1">BEST BID</span>
+            <span className="text-lg sm:text-xl font-mono font-bold text-emerald-400 drop-shadow-[0_0_12px_rgba(34,197,94,0.3)]">
+              ₹{(bestBid || 0).toLocaleString()}
             </span>
           </div>
 
-          <div className="p-3.5 sm:p-4">
-            <span className="text-[10px] font-mono tracking-wider text-[#8E867A] block mb-1">BEST ASK</span>
-            <span className="text-lg sm:text-xl font-mono font-bold text-[#EF4444]">
-              ₹{bestAsk.toLocaleString()}
+          <div className="p-3.5 sm:p-4 hover:bg-white/[0.02] transition-colors">
+            <span className="text-[10px] font-mono tracking-widest text-white/40 block mb-1">BEST ASK</span>
+            <span className="text-lg sm:text-xl font-mono font-bold text-rose-400 drop-shadow-[0_0_12px_rgba(239,68,68,0.3)]">
+              ₹{(bestAsk || 0).toLocaleString()}
             </span>
           </div>
 
-          <div className="p-3.5 sm:p-4">
-            <span className="text-[10px] font-mono tracking-wider text-[#8E867A] block mb-1">SPREAD</span>
+          <div className="p-3.5 sm:p-4 hover:bg-white/[0.02] transition-colors">
+            <span className="text-[10px] font-mono tracking-widest text-white/40 block mb-1">SPREAD</span>
             <span className="text-lg sm:text-xl font-mono font-bold text-[#F5D061]">
-              ₹{spread.toLocaleString()}
+              ₹{(spread || 0).toLocaleString()}
             </span>
           </div>
 
-          <div className="p-3.5 sm:p-4">
-            <span className="text-[10px] font-mono tracking-wider text-[#8E867A] block mb-1">LAST TRADE</span>
+          <div className="p-3.5 sm:p-4 hover:bg-white/[0.02] transition-colors">
+            <span className="text-[10px] font-mono tracking-widest text-white/40 block mb-1">LAST TRADE</span>
             <span className="text-lg sm:text-xl font-mono font-bold text-white">
               ₹2,300
             </span>
-            <span className="text-[10px] font-mono text-[#8E867A] block">₹0.00</span>
+            <span className="text-[10px] font-mono text-white/40 block">₹0.00</span>
           </div>
 
-          <div className="p-3.5 sm:p-4">
-            <span className="text-[10px] font-mono tracking-wider text-[#8E867A] block mb-1">ACTIVE BIDS</span>
+          <div className="p-3.5 sm:p-4 hover:bg-white/[0.02] transition-colors">
+            <span className="text-[10px] font-mono tracking-widest text-white/40 block mb-1">ACTIVE BIDS</span>
             <span className="text-lg sm:text-xl font-mono font-bold text-white">
               {bids.length}
             </span>
           </div>
 
-          <div className="p-3.5 sm:p-4">
-            <span className="text-[10px] font-mono tracking-wider text-[#8E867A] block mb-1">ACTIVE ASKS</span>
+          <div className="p-3.5 sm:p-4 hover:bg-white/[0.02] transition-colors">
+            <span className="text-[10px] font-mono tracking-widest text-white/40 block mb-1">ACTIVE ASKS</span>
             <span className="text-lg sm:text-xl font-mono font-bold text-white">
               {asks.length}
             </span>
           </div>
 
-          <div className="p-3.5 sm:p-4">
-            <span className="text-[10px] font-mono tracking-wider text-[#8E867A] block mb-1">TRADES</span>
+          <div className="p-3.5 sm:p-4 hover:bg-white/[0.02] transition-colors">
+            <span className="text-[10px] font-mono tracking-widest text-white/40 block mb-1">TRADES</span>
             <span className="text-lg sm:text-xl font-mono font-bold text-white">
               {recentTrades.length}
             </span>
           </div>
 
-          <div className="p-3.5 sm:p-4 bg-[#140F0D]/60">
-            <span className="text-[10px] font-mono tracking-wider text-[#D4AF37] block mb-1">MORGANA CASH</span>
+          <div className="p-3.5 sm:p-4 bg-[#D4AF37]/5 hover:bg-[#D4AF37]/10 transition-colors">
+            <span className="text-[10px] font-mono tracking-widest text-[#F5D061] block mb-1 font-semibold">MORGANA CASH</span>
             <span className="text-base sm:text-lg font-mono font-bold text-white">
               ₹49,000.00
             </span>
-            <span className="text-[10px] font-mono text-[#8E867A] block">
+            <span className="text-[10px] font-mono text-white/40 block">
               Reserved ₹8,700.00
             </span>
           </div>
@@ -250,40 +266,40 @@ export default function HeroPreviewWidget() {
         </div>
 
         {/* Two-Column Interior View: Level 2 Orderbook Ladder & Market Stream */}
-        <div className="grid grid-cols-1 lg:grid-cols-12 divide-y lg:divide-y-0 lg:divide-x divide-[#241E19]">
+        <div className="grid grid-cols-1 lg:grid-cols-12 divide-y lg:divide-y-0 lg:divide-x divide-white/[0.08]">
           
           {/* Left Column: Order Book & Trades Ladder */}
-          <div className="lg:col-span-7 p-4 sm:p-5">
+          <div className="lg:col-span-7 p-4 sm:p-6">
             <div className="flex items-center justify-between mb-4">
               <div className="flex items-center gap-2">
                 <BarChart2 className="w-4 h-4 text-[#D4AF37]" />
-                <h3 className="font-cinzel font-bold text-sm tracking-wide text-[#E5C378]">
+                <h3 className="font-cinzel font-bold text-sm tracking-wide text-[#F5D061]">
                   Level 2 In-Memory Order Book
                 </h3>
               </div>
-              <span className="text-xs font-mono text-[#8E867A]">
+              <span className="text-xs font-mono text-white/40">
                 Dynamic Collar: Max ₹2,500.00
               </span>
             </div>
 
             {/* Depth Ladder */}
-            <div className="grid grid-cols-2 gap-3 mb-6">
+            <div className="grid grid-cols-2 gap-4 mb-6">
               {/* Bids Ladder (Emerald) */}
-              <div className="bg-[#0B0908]/70 border border-[#241E19] rounded-xl p-3">
-                <div className="flex justify-between text-[11px] font-mono text-[#8E867A] pb-2 border-b border-[#1E1916]">
+              <div className="bg-black/40 border border-white/[0.08] rounded-2xl p-3.5 shadow-inner">
+                <div className="flex justify-between text-[11px] font-mono text-white/40 pb-2 border-b border-white/[0.06]">
                   <span>PRICE (₹)</span>
                   <span>QTY</span>
                   <span>USER</span>
                 </div>
                 <div className="space-y-1.5 mt-2">
                   {bids.map((b) => (
-                    <div key={b.id} className="relative flex justify-between items-center text-xs font-mono py-1 px-1.5 rounded hover:bg-emerald-950/20">
-                      <span className="text-[#22C55E] font-semibold">₹{b.price}</span>
-                      <span className="text-[#D1C9BE]">{b.qty}</span>
-                      <span className="text-[#7A7367] text-[10px] truncate max-w-[70px]">{b.user}</span>
+                    <div key={b.id} className="relative flex justify-between items-center text-xs font-mono py-1 px-2 rounded hover:bg-emerald-500/10 transition-colors">
+                      <span className="text-emerald-400 font-semibold relative z-10">₹{b.price}</span>
+                      <span className="text-white/90 relative z-10">{b.qty}</span>
+                      <span className="text-white/40 text-[10px] truncate max-w-[70px] relative z-10">{b.user}</span>
                       {/* Depth visualization bar */}
                       <div 
-                        className="absolute right-0 top-0 bottom-0 bg-[#22C55E]/10 rounded pointer-events-none"
+                        className="absolute right-0 top-0 bottom-0 bg-gradient-to-l from-emerald-500/20 to-transparent rounded-r pointer-events-none"
                         style={{ width: `${(b.qty / 5) * 100}%` }}
                       />
                     </div>
@@ -292,21 +308,21 @@ export default function HeroPreviewWidget() {
               </div>
 
               {/* Asks Ladder (Crimson) */}
-              <div className="bg-[#0B0908]/70 border border-[#241E19] rounded-xl p-3">
-                <div className="flex justify-between text-[11px] font-mono text-[#8E867A] pb-2 border-b border-[#1E1916]">
+              <div className="bg-black/40 border border-white/[0.08] rounded-2xl p-3.5 shadow-inner">
+                <div className="flex justify-between text-[11px] font-mono text-white/40 pb-2 border-b border-white/[0.06]">
                   <span>PRICE (₹)</span>
                   <span>QTY</span>
                   <span>USER</span>
                 </div>
                 <div className="space-y-1.5 mt-2">
                   {asks.map((a) => (
-                    <div key={a.id} className="relative flex justify-between items-center text-xs font-mono py-1 px-1.5 rounded hover:bg-red-950/20">
-                      <span className="text-[#EF4444] font-semibold">₹{a.price}</span>
-                      <span className="text-[#D1C9BE]">{a.qty}</span>
-                      <span className="text-[#7A7367] text-[10px] truncate max-w-[70px]">{a.user}</span>
+                    <div key={a.id} className="relative flex justify-between items-center text-xs font-mono py-1 px-2 rounded hover:bg-rose-500/10 transition-colors">
+                      <span className="text-rose-400 font-semibold relative z-10">₹{a.price}</span>
+                      <span className="text-white/90 relative z-10">{a.qty}</span>
+                      <span className="text-white/40 text-[10px] truncate max-w-[70px] relative z-10">{a.user}</span>
                       {/* Depth visualization bar */}
                       <div 
-                        className="absolute right-0 top-0 bottom-0 bg-[#EF4444]/10 rounded pointer-events-none"
+                        className="absolute right-0 top-0 bottom-0 bg-gradient-to-l from-rose-500/20 to-transparent rounded-r pointer-events-none"
                         style={{ width: `${(a.qty / 5) * 100}%` }}
                       />
                     </div>
@@ -317,30 +333,30 @@ export default function HeroPreviewWidget() {
 
             {/* Recent Trades Table */}
             <div>
-              <h4 className="text-xs font-cinzel font-semibold text-[#D4AF37] mb-2">
+              <h4 className="text-xs font-cinzel font-semibold text-[#D4AF37] mb-2.5">
                 Recent Executions (Double-Entry Ledger Settled)
               </h4>
-              <div className="overflow-x-auto">
+              <div className="overflow-x-auto rounded-xl border border-white/[0.06] bg-black/30">
                 <table className="w-full text-left text-xs font-mono">
                   <thead>
-                    <tr className="border-b border-[#241E19] text-[#7A7367]">
-                      <th className="py-1.5">#</th>
-                      <th className="py-1.5">TIME</th>
-                      <th className="py-1.5">PRICE</th>
-                      <th className="py-1.5">QTY</th>
-                      <th className="py-1.5">BUYER</th>
-                      <th className="py-1.5">SELLER</th>
+                    <tr className="border-b border-white/[0.06] text-white/40 bg-black/40">
+                      <th className="py-2 px-3">#</th>
+                      <th className="py-2 px-3">TIME</th>
+                      <th className="py-2 px-3">PRICE</th>
+                      <th className="py-2 px-3">QTY</th>
+                      <th className="py-2 px-3">BUYER</th>
+                      <th className="py-2 px-3">SELLER</th>
                     </tr>
                   </thead>
-                  <tbody className="divide-y divide-[#1A1412]">
+                  <tbody className="divide-y divide-white/[0.04]">
                     {recentTrades.map((t) => (
-                      <tr key={t.id} className="hover:bg-[#1C1714]/40">
-                        <td className="py-1.5 text-[#7A7367]">{t.id}</td>
-                        <td className="py-1.5 text-[#9B9487]">{t.time}</td>
-                        <td className="py-1.5 text-[#22C55E] font-semibold">₹{t.price.toLocaleString()}</td>
-                        <td className="py-1.5 text-white">{t.qty}</td>
-                        <td className="py-1.5 text-[#D1C9BE]">{t.buyer}</td>
-                        <td className="py-1.5 text-[#9B9487]">{t.seller}</td>
+                      <tr key={t.id} className="hover:bg-white/[0.03] transition-colors">
+                        <td className="py-2 px-3 text-white/40">{t.id}</td>
+                        <td className="py-2 px-3 text-white/60">{t.time}</td>
+                        <td className="py-2 px-3 text-emerald-400 font-semibold">₹{(t.price ? Number(t.price).toLocaleString() : '0')}</td>
+                        <td className="py-2 px-3 text-white font-bold">{t.qty}</td>
+                        <td className="py-2 px-3 text-white/80">{t.buyer}</td>
+                        <td className="py-2 px-3 text-white/50">{t.seller}</td>
                       </tr>
                     ))}
                   </tbody>
@@ -351,17 +367,17 @@ export default function HeroPreviewWidget() {
           </div>
 
           {/* Right Column: Live Market Activity Stream */}
-          <div className="lg:col-span-5 p-4 sm:p-5 bg-[#090706]/70 flex flex-col justify-between">
+          <div className="lg:col-span-5 p-4 sm:p-6 bg-black/40 flex flex-col justify-between">
             <div>
-              <div className="flex items-center justify-between pb-3 border-b border-[#241E19] mb-3">
+              <div className="flex items-center justify-between pb-3.5 border-b border-white/[0.08] mb-3.5">
                 <div className="flex items-center gap-2">
-                  <Activity className="w-4 h-4 text-[#22C55E]" />
-                  <h3 className="font-cinzel font-bold text-sm tracking-wide text-[#E5C378]">
+                  <Activity className="w-4 h-4 text-emerald-400" />
+                  <h3 className="font-cinzel font-bold text-sm tracking-wide text-white">
                     Market Activity Feed
                   </h3>
                 </div>
-                <span className="text-[11px] font-mono text-[#22C55E] flex items-center gap-1.5">
-                  <span className="w-1.5 h-1.5 rounded-full bg-[#22C55E] animate-pulse" />
+                <span className="text-[11px] font-mono text-emerald-400 flex items-center gap-1.5 bg-emerald-500/10 border border-emerald-500/30 px-2.5 py-0.5 rounded-full shadow-[0_0_10px_rgba(34,197,94,0.15)]">
+                  <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
                   WS Live Stream
                 </span>
               </div>
@@ -371,19 +387,19 @@ export default function HeroPreviewWidget() {
                 {activityFeed.map((item) => (
                   <div
                     key={item.id}
-                    className={`p-2.5 rounded-lg border transition-all ${
+                    className={`p-3 rounded-xl border transition-all duration-300 hover:scale-[1.01] ${
                       item.type === 'alert'
-                        ? 'bg-[#291010]/80 border-[#EF4444]/40 text-[#FCA5A5]'
+                        ? 'bg-rose-950/40 border-rose-500/40 text-rose-300 shadow-[0_0_15px_rgba(239,68,68,0.1)]'
                         : item.type === 'success'
-                        ? 'bg-[#0E2314]/80 border-[#22C55E]/40 text-[#86EFAC]'
+                        ? 'bg-emerald-950/40 border-emerald-500/40 text-emerald-300 shadow-[0_0_15px_rgba(34,197,94,0.1)]'
                         : item.type === 'auction'
-                        ? 'bg-[#2A200B]/80 border-[#D4AF37]/40 text-[#FDE047]'
-                        : 'bg-[#14100E]/70 border-[#221B17] text-[#C2BCB0]'
+                        ? 'bg-amber-950/40 border-amber-500/40 text-amber-300 shadow-[0_0_15px_rgba(245,208,97,0.1)]'
+                        : 'bg-black/50 border-white/[0.06] text-white/70'
                     }`}
                   >
-                    <div className="flex items-center justify-between text-[10px] text-[#8E867A] mb-1">
+                    <div className="flex items-center justify-between text-[10px] text-white/40 mb-1">
                       <span>{item.time}</span>
-                      <span className="uppercase tracking-widest text-[9px] text-[#A39E93]">
+                      <span className="uppercase tracking-widest text-[9px] text-white/50 font-bold">
                         {item.type}
                       </span>
                     </div>
@@ -394,12 +410,12 @@ export default function HeroPreviewWidget() {
             </div>
 
             {/* Bottom Proof Note */}
-            <div className="mt-4 pt-3 border-t border-[#241E19] text-[11px] text-[#8E867A] font-mono flex items-center justify-between">
+            <div className="mt-5 pt-3.5 border-t border-white/[0.08] text-[11px] text-white/50 font-mono flex items-center justify-between">
               <span className="flex items-center gap-1.5">
-                <ShieldCheck className="w-3.5 h-3.5 text-[#22C55E]" />
+                <ShieldCheck className="w-4 h-4 text-emerald-400" />
                 In-Memory Matcher: Lock-Free Go
               </span>
-              <a href="#simulator" className="text-[#D4AF37] hover:underline flex items-center gap-1">
+              <a href="#simulator" className="text-[#F5D061] hover:text-white transition-colors flex items-center gap-1 font-semibold">
                 Open Full Simulator <ArrowRight className="w-3 h-3" />
               </a>
             </div>

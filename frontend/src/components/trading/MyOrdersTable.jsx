@@ -1,12 +1,8 @@
 import React, { useState } from 'react'
 import {
   Clock,
-  CheckCircle2,
-  XCircle,
-  AlertCircle,
   X,
   Loader2,
-  Trash2,
   ArrowDownLeft,
   ArrowUpRight,
   RefreshCw,
@@ -15,18 +11,19 @@ import { ordersApi } from '../../services/api'
 import toast from 'react-hot-toast'
 
 export default function MyOrdersTable({
-  orders,
-  isLoading,
+  orders = [],
+  isLoading = false,
   onOrderCancelled,
   onRefresh,
 }) {
   const [cancellingId, setCancellingId] = useState(null)
   const [activeTab, setActiveTab] = useState('active') // 'active' | 'all'
 
-  const activeOrders = orders.filter(
+  const safeOrders = Array.isArray(orders) ? orders : []
+  const activeOrders = safeOrders.filter(
     (o) => o.status === 'OPEN' || o.status === 'PARTIALLY_FILLED'
   )
-  const displayOrders = activeTab === 'active' ? activeOrders : orders
+  const displayOrders = activeTab === 'active' ? activeOrders : safeOrders
 
   const handleCancel = async (orderId) => {
     if (!orderId) return
@@ -48,23 +45,23 @@ export default function MyOrdersTable({
   }
 
   return (
-    <div className="rounded-2xl gloss-panel border border-[#2A211B] p-5 sm:p-6 shadow-[0_10px_35px_rgba(0,0,0,0.7)] space-y-4">
+    <div className="rounded-3xl spatial-glass p-5 sm:p-6 shadow-[0_20px_50px_-10px_rgba(0,0,0,0.85),0_0_30px_rgba(212,175,55,0.04),inset_0_1px_0_rgba(255,255,255,0.1)] space-y-4 transition-all duration-300">
       {/* Top Header & Tabs */}
-      <div className="flex flex-wrap items-center justify-between gap-4 pb-3 border-b border-[#221B16]">
+      <div className="flex flex-wrap items-center justify-between gap-4 pb-4 border-b border-white/[0.08]">
         <div className="flex items-center gap-3">
           <Clock className="w-5 h-5 text-[#D4AF37]" />
           <h3 className="font-cinzel font-bold text-base text-white tracking-wide">
             My Orders & Escrow Positions
           </h3>
 
-          <div className="flex items-center gap-1 p-1 rounded-lg bg-[#0F0D0B] border border-[#251D18] text-xs font-mono ml-2">
+          <div className="flex items-center gap-1.5 p-1 rounded-xl bg-black/40 border border-white/[0.06] text-xs font-mono ml-2">
             <button
               type="button"
               onClick={() => setActiveTab('active')}
-              className={`px-3 py-1 rounded-md transition-all cursor-pointer ${
+              className={`px-3 py-1 rounded-lg transition-all duration-200 cursor-pointer ${
                 activeTab === 'active'
-                  ? 'bg-[#D4AF37]/20 border border-[#D4AF37]/50 text-[#F5D061] font-bold'
-                  : 'text-[#8E867A] hover:text-white'
+                  ? 'bg-white/[0.08] border border-[#D4AF37]/50 text-[#F5D061] font-bold shadow-[0_0_12px_rgba(212,175,55,0.2),inset_0_1px_0_rgba(255,255,255,0.1)] scale-[1.02]'
+                  : 'text-white/50 hover:text-white'
               }`}
             >
               Open Orders ({activeOrders.length})
@@ -72,10 +69,10 @@ export default function MyOrdersTable({
             <button
               type="button"
               onClick={() => setActiveTab('all')}
-              className={`px-3 py-1 rounded-md transition-all cursor-pointer ${
+              className={`px-3 py-1 rounded-lg transition-all duration-200 cursor-pointer ${
                 activeTab === 'all'
-                  ? 'bg-[#D4AF37]/20 border border-[#D4AF37]/50 text-[#F5D061] font-bold'
-                  : 'text-[#8E867A] hover:text-white'
+                  ? 'bg-white/[0.08] border border-[#D4AF37]/50 text-[#F5D061] font-bold shadow-[0_0_12px_rgba(212,175,55,0.2),inset_0_1px_0_rgba(255,255,255,0.1)] scale-[1.02]'
+                  : 'text-white/50 hover:text-white'
               }`}
             >
               Order History ({orders.length})
@@ -86,33 +83,33 @@ export default function MyOrdersTable({
         <button
           type="button"
           onClick={onRefresh}
-          className="p-2 rounded-lg bg-[#14100E] border border-[#2A211B] text-[#A8A195] hover:text-[#D4AF37] hover:border-[#D4AF37]/40 transition-colors cursor-pointer"
+          className="p-2 rounded-xl bg-white/[0.03] hover:bg-white/[0.08] border border-white/[0.08] text-white/60 hover:text-[#D4AF37] hover:border-[#D4AF37]/40 transition-all duration-200 cursor-pointer hover:scale-105"
           title="Refresh Orders"
         >
           <RefreshCw className={`w-3.5 h-3.5 ${isLoading ? 'animate-spin' : ''}`} />
         </button>
       </div>
 
-      {/* Orders Table */}
+      {/* Orders Table with Light-Model Text Opacity Hierarchy */}
       <div className="overflow-x-auto">
         <table className="w-full text-left font-mono text-xs">
           <thead>
-            <tr className="border-b border-[#1C1613] text-[#8E867A] uppercase text-[10px] tracking-wider">
-              <th className="py-2.5 px-3">Date / Time</th>
-              <th className="py-2.5 px-3">Market</th>
-              <th className="py-2.5 px-3">Side</th>
-              <th className="py-2.5 px-3">Type</th>
-              <th className="py-2.5 px-3 text-right">Price</th>
-              <th className="py-2.5 px-3 text-right">Qty</th>
-              <th className="py-2.5 px-3 text-right">Filled</th>
-              <th className="py-2.5 px-3 text-center">Status</th>
-              <th className="py-2.5 px-3 text-right">Action</th>
+            <tr className="border-b border-white/[0.06] text-white/40 uppercase text-[10px] tracking-widest">
+              <th className="py-3 px-3.5">Date / Time</th>
+              <th className="py-3 px-3.5">Market</th>
+              <th className="py-3 px-3.5">Side</th>
+              <th className="py-3 px-3.5">Type</th>
+              <th className="py-3 px-3.5 text-right">Price</th>
+              <th className="py-3 px-3.5 text-right">Qty</th>
+              <th className="py-3 px-3.5 text-right">Filled</th>
+              <th className="py-3 px-3.5 text-center">Status</th>
+              <th className="py-3 px-3.5 text-right">Action</th>
             </tr>
           </thead>
-          <tbody className="divide-y divide-[#15110E]">
+          <tbody className="divide-y divide-white/[0.03]">
             {displayOrders.length === 0 ? (
               <tr>
-                <td colSpan={9} className="py-10 text-center text-xs text-[#6A6357]">
+                <td colSpan={9} className="py-12 text-center text-xs text-white/30">
                   {activeTab === 'active'
                     ? 'No open orders resting on the book. Place a Buy or Sell order to get started.'
                     : 'No orders recorded yet.'}
@@ -132,21 +129,24 @@ export default function MyOrdersTable({
                   : 'Recent'
 
                 return (
-                  <tr key={order.id} className="hover:bg-[#120F0D] transition-colors">
-                    <td className="py-3 px-3 text-[#A8A195] whitespace-nowrap">
+                  <tr key={order.id} className="hover:bg-white/[0.04] hover:-translate-y-0.5 transition-all duration-200 group">
+                    {/* Date/Time: 50% Opacity Secondary */}
+                    <td className="py-3.5 px-3.5 text-white/50 whitespace-nowrap text-[11px]">
                       {formattedDate}
                     </td>
 
-                    <td className="py-3 px-3 font-semibold text-white">
+                    {/* Market Symbol: 100% Opacity Primary */}
+                    <td className="py-3.5 px-3.5 font-bold text-white tracking-wide">
                       {order.event_symbol}
                     </td>
 
-                    <td className="py-3 px-3">
+                    {/* Side Pill */}
+                    <td className="py-3.5 px-3.5">
                       <span
-                        className={`inline-flex items-center gap-1 px-2 py-0.5 rounded text-[10px] font-bold ${
+                        className={`inline-flex items-center gap-1 px-2.5 py-0.5 rounded-md text-[10px] font-bold ${
                           isBuy
-                            ? 'bg-[#22C55E]/15 text-[#22C55E] border border-[#22C55E]/30'
-                            : 'bg-[#EF4444]/15 text-[#EF4444] border border-[#EF4444]/30'
+                            ? 'bg-[#22C55E]/15 text-[#22C55E] border border-[#22C55E]/30 shadow-[0_0_10px_rgba(34,197,94,0.15)]'
+                            : 'bg-[#EF4444]/15 text-[#EF4444] border border-[#EF4444]/30 shadow-[0_0_10px_rgba(239,68,68,0.15)]'
                         }`}
                       >
                         {isBuy ? <ArrowDownLeft className="w-3 h-3" /> : <ArrowUpRight className="w-3 h-3" />}
@@ -154,45 +154,51 @@ export default function MyOrdersTable({
                       </span>
                     </td>
 
-                    <td className="py-3 px-3 text-[#C0B7A8]">
+                    {/* Order Type: 60% Opacity */}
+                    <td className="py-3.5 px-3.5 text-white/60">
                       {order.order_type}
                     </td>
 
-                    <td className="py-3 px-3 text-right font-bold text-white">
+                    {/* Price: 100% Opacity Primary Value */}
+                    <td className="py-3.5 px-3.5 text-right font-bold text-white text-sm">
                       ₹{order.price ? Math.round(order.price).toLocaleString() : '0'}
                     </td>
 
-                    <td className="py-3 px-3 text-right text-[#C0B7A8]">
+                    {/* Quantity: 70% Opacity */}
+                    <td className="py-3.5 px-3.5 text-right text-white/70">
                       {order.quantity}
                     </td>
 
-                    <td className="py-3 px-3 text-right text-[#E0DBD2]">
+                    {/* Filled Ratio: 90% Opacity */}
+                    <td className="py-3.5 px-3.5 text-right text-white/90">
                       {order.filled_quantity || 0} / {order.quantity}
                     </td>
 
-                    <td className="py-3 px-3 text-center">
+                    {/* Status Pill with Specular Tint */}
+                    <td className="py-3.5 px-3.5 text-center">
                       <span
-                        className={`inline-block px-2 py-0.5 rounded text-[10px] font-semibold ${
+                        className={`inline-block px-2.5 py-0.5 rounded-md text-[10px] font-semibold uppercase tracking-wider ${
                           order.status === 'FILLED'
                             ? 'bg-[#22C55E]/15 text-[#22C55E] border border-[#22C55E]/30'
                             : order.status === 'OPEN'
-                            ? 'bg-[#F5D061]/15 text-[#F5D061] border border-[#F5D061]/30'
+                            ? 'bg-[#F5D061]/15 text-[#F5D061] border border-[#D4AF37]/40 shadow-[0_0_10px_rgba(212,175,55,0.15)]'
                             : order.status === 'PARTIALLY_FILLED'
                             ? 'bg-[#38BDF8]/15 text-[#38BDF8] border border-[#38BDF8]/30'
-                            : 'bg-[#8E867A]/15 text-[#8E867A] border border-[#8E867A]/30'
+                            : 'bg-white/[0.04] text-white/50 border border-white/[0.08]'
                         }`}
                       >
                         {order.status}
                       </span>
                     </td>
 
-                    <td className="py-3 px-3 text-right">
+                    {/* Actions */}
+                    <td className="py-3.5 px-3.5 text-right">
                       {isOpen ? (
                         <button
                           type="button"
                           disabled={cancellingId === order.id}
                           onClick={() => handleCancel(order.id)}
-                          className="px-2.5 py-1 rounded bg-[#EF4444]/10 hover:bg-[#EF4444]/20 border border-[#EF4444]/40 text-[#EF4444] text-[10px] font-bold transition-all inline-flex items-center gap-1 cursor-pointer disabled:opacity-50"
+                          className="px-3 py-1 rounded-xl bg-[#EF4444]/10 hover:bg-[#EF4444]/25 border border-[#EF4444]/35 text-[#EF4444] text-[10px] font-bold transition-all duration-200 inline-flex items-center gap-1 cursor-pointer hover:-translate-y-0.5 disabled:opacity-50 shadow-sm"
                         >
                           {cancellingId === order.id ? (
                             <Loader2 className="w-3 h-3 animate-spin" />
@@ -202,7 +208,7 @@ export default function MyOrdersTable({
                           <span>Cancel</span>
                         </button>
                       ) : (
-                        <span className="text-[#6A6357] text-[10px]">—</span>
+                        <span className="text-white/20 text-[10px]">—</span>
                       )}
                     </td>
                   </tr>

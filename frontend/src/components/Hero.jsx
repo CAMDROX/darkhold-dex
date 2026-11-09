@@ -1,5 +1,5 @@
 import React from 'react'
-import { ShieldCheck, Cpu, ArrowUpRight, Lock, Gauge, Flame, Activity, Zap, PlayCircle, Terminal } from 'lucide-react'
+import { ShieldCheck, Cpu, ArrowUpRight, Lock, Gauge, Zap, Terminal } from 'lucide-react'
 
 export default function Hero() {
   return (
@@ -40,25 +40,25 @@ export default function Hero() {
       <div className="relative max-w-5xl mx-auto text-center z-10">
         {/* Top Live Status Pill */}
         <div className="inline-flex items-center gap-2.5 px-4 py-2 rounded-full gloss-pill text-xs font-mono tracking-wider text-[#E5C378] mb-8 shadow-[0_0_25px_rgba(212,175,55,0.15)] animate-float-subtle">
-          <span className="w-2.5 h-2.5 rounded-full bg-[#22C55E] animate-pulse" />
+          <span className="w-2.5 h-2.5 rounded-full bg-emerald-400 animate-pulse" />
           <span className="text-[#F5D061] font-bold">LIVE PRODUCTION</span>
-          <span className="text-[#5A4F44]">|</span>
+          <span className="text-white/20">|</span>
           <span className="text-white font-medium">HIGH-FREQUENCY SECONDARY MARKETPLACE</span>
         </div>
 
         {/* Cinematic Main Title */}
-        <h1 className="font-cinzel font-black text-4xl sm:text-6xl md:text-7xl lg:text-8xl tracking-wider text-transparent bg-clip-text bg-gradient-to-b from-[#FFF] via-[#F4EDE0] to-[#C5A059] leading-[1.08] mb-6 drop-shadow-[0_4px_25px_rgba(0,0,0,0.8)]">
+        <h1 className="font-cinzel font-black text-4xl sm:text-6xl md:text-7xl lg:text-8xl tracking-wider text-transparent bg-clip-text bg-gradient-to-b from-white via-[#F4EDE0] to-[#C5A059] leading-[1.08] mb-6 drop-shadow-[0_4px_25px_rgba(0,0,0,0.8)]">
           THE DARKHOLD <br />
-          <span className="text-transparent bg-clip-text bg-gradient-to-r from-[#D4AF37] via-[#F5D061] to-[#EF4444]">
+          <span className="text-transparent bg-clip-text bg-gradient-to-r from-[#D4AF37] via-[#F5D061] to-rose-500">
             EXCHANGE
           </span>
         </h1>
 
         {/* Subtitle */}
-        <p className="max-w-3xl mx-auto text-base sm:text-lg md:text-xl text-[#C8C2B6] font-light leading-relaxed mb-10">
+        <p className="max-w-3xl mx-auto text-base sm:text-lg md:text-xl text-white/70 font-light leading-relaxed mb-10">
           Neutralize predatory scalpers and bot swarms in secondary ticket & relic trades. 
           Engineered with an <span className="text-[#F5D061] font-normal underline decoration-[#D4AF37]/50 underline-offset-4">in-memory FIFO matching engine in Go</span>, 
-          real-time WebSocket depth ladders, <span className="text-[#EF4444] font-normal">anti-scalper dynamic price collars</span>, 
+          real-time WebSocket depth ladders, <span className="text-rose-400 font-normal">anti-scalper dynamic price collars</span>, 
           and provable <span className="text-[#E5C378] font-normal">Dutch auction liquidations</span>.
         </p>
 
@@ -66,16 +66,16 @@ export default function Hero() {
         <div className="flex flex-wrap items-center justify-center gap-4 sm:gap-6 mb-16">
           <a
             href="#simulator"
-            className="group relative px-7 py-3.5 rounded-xl font-mono text-sm tracking-wider uppercase font-semibold text-[#0B0908] bg-gradient-to-r from-[#D4AF37] via-[#F5D061] to-[#E5C378] shadow-[0_0_30px_rgba(212,175,55,0.4)] hover:shadow-[0_0_45px_rgba(212,175,55,0.6)] hover:scale-105 transition-all flex items-center gap-3"
+            className="group relative px-7 py-3.5 rounded-2xl font-mono text-sm tracking-wider uppercase font-semibold text-black bg-gradient-to-r from-[#D4AF37] via-[#F5D061] to-[#E5C378] shadow-[0_0_30px_rgba(212,175,55,0.4)] hover:shadow-[0_0_45px_rgba(212,175,55,0.6)] hover:scale-105 active:scale-95 transition-all flex items-center gap-3 cursor-pointer"
           >
-            <Zap className="w-4 h-4 fill-[#0B0908]" />
+            <Zap className="w-4 h-4 fill-current" />
             <span>Simulate Order Engine</span>
             <ArrowUpRight className="w-4 h-4 transition-transform group-hover:translate-x-1 group-hover:-translate-y-1" />
           </a>
 
           <a
             href="#architecture"
-            className="px-6 py-3.5 rounded-xl font-mono text-sm tracking-wider uppercase font-medium text-[#E5E0D8] gloss-panel hover:bg-[#201A16] hover:text-[#FFF] hover:border-[#D4AF37]/50 transition-all flex items-center gap-2.5"
+            className="px-6 py-3.5 rounded-2xl font-mono text-sm tracking-wider uppercase font-medium text-white/80 spatial-glass hover:bg-white/[0.08] hover:text-white hover:border-[#D4AF37]/50 transition-all duration-300 flex items-center gap-2.5 cursor-pointer hover:-translate-y-0.5 active:scale-95"
           >
             <Terminal className="w-4 h-4 text-[#D4AF37]" />
             <span>Architecture & Specs</span>
@@ -85,54 +85,54 @@ export default function Hero() {
         {/* Real-time Performance Metrics Bar (Pass & Victory Tier guarantees) */}
         <div className="grid grid-cols-2 md:grid-cols-4 gap-4 max-w-4xl mx-auto">
           
-          <div className="gloss-panel p-4 rounded-xl text-left transition-all">
-            <div className="flex items-center justify-between text-[#8E867A] text-xs font-mono mb-1">
+          <div className="spatial-card p-5 rounded-2xl text-left transition-all duration-300 hover:border-emerald-500/50 hover:shadow-[0_20px_45px_rgba(0,0,0,0.9),0_0_20px_rgba(34,197,94,0.15)]">
+            <div className="flex items-center justify-between text-white/50 text-xs font-mono mb-1">
               <span>MATCHING LATENCY</span>
-              <Gauge className="w-4 h-4 text-[#22C55E]" />
+              <Gauge className="w-4 h-4 text-emerald-400" />
             </div>
-            <div className="text-2xl sm:text-3xl font-mono font-bold text-[#22C55E]">
+            <div className="text-2xl sm:text-3xl font-mono font-bold text-emerald-400 drop-shadow-[0_0_12px_rgba(34,197,94,0.3)]">
               &lt; 1ms
             </div>
-            <div className="text-[11px] text-[#A59E92] mt-1 font-mono">
+            <div className="text-[11px] text-white/40 mt-1 font-mono">
               High-Speed In-Memory Matching (&lt; 1ms)
             </div>
           </div>
 
-          <div className="gloss-panel p-4 rounded-xl text-left transition-all">
-            <div className="flex items-center justify-between text-[#8E867A] text-xs font-mono mb-1">
+          <div className="spatial-card p-5 rounded-2xl text-left transition-all duration-300 hover:border-[#D4AF37]/50 hover:shadow-[0_20px_45px_rgba(0,0,0,0.9),0_0_20px_rgba(212,175,55,0.15)]">
+            <div className="flex items-center justify-between text-white/50 text-xs font-mono mb-1">
               <span>CONCURRENCY</span>
               <Cpu className="w-4 h-4 text-[#D4AF37]" />
             </div>
-            <div className="text-2xl sm:text-3xl font-mono font-bold text-[#F5D061]">
+            <div className="text-2xl sm:text-3xl font-mono font-bold text-[#F5D061] drop-shadow-[0_0_12px_rgba(212,175,55,0.3)]">
               1,250+
             </div>
-            <div className="text-[11px] text-[#A59E92] mt-1 font-mono">
+            <div className="text-[11px] text-white/40 mt-1 font-mono">
               Orders/sec lock-free ring buffer
             </div>
           </div>
 
-          <div className="gloss-panel p-4 rounded-xl text-left transition-all">
-            <div className="flex items-center justify-between text-[#8E867A] text-xs font-mono mb-1">
+          <div className="spatial-card p-5 rounded-2xl text-left transition-all duration-300 hover:border-rose-500/50 hover:shadow-[0_20px_45px_rgba(0,0,0,0.9),0_0_20px_rgba(239,68,68,0.15)]">
+            <div className="flex items-center justify-between text-white/50 text-xs font-mono mb-1">
               <span>PRICE COLLAR CAP</span>
-              <ShieldCheck className="w-4 h-4 text-[#EF4444]" />
+              <ShieldCheck className="w-4 h-4 text-rose-400" />
             </div>
-            <div className="text-2xl sm:text-3xl font-mono font-bold text-[#EF4444]">
+            <div className="text-2xl sm:text-3xl font-mono font-bold text-rose-400 drop-shadow-[0_0_12px_rgba(239,68,68,0.3)]">
               +25% Cap
             </div>
-            <div className="text-[11px] text-[#A59E92] mt-1 font-mono">
+            <div className="text-[11px] text-white/40 mt-1 font-mono">
               Hard anti-scalper ceiling pinned to face
             </div>
           </div>
 
-          <div className="gloss-panel p-4 rounded-xl text-left transition-all">
-            <div className="flex items-center justify-between text-[#8E867A] text-xs font-mono mb-1">
+          <div className="spatial-card p-5 rounded-2xl text-left transition-all duration-300 hover:border-[#D4AF37]/50 hover:shadow-[0_20px_45px_rgba(0,0,0,0.9),0_0_20px_rgba(212,175,55,0.15)]">
+            <div className="flex items-center justify-between text-white/50 text-xs font-mono mb-1">
               <span>LEDGER ANOMALIES</span>
-              <Lock className="w-4 h-4 text-[#E5C378]" />
+              <Lock className="w-4 h-4 text-[#F5D061]" />
             </div>
-            <div className="text-2xl sm:text-3xl font-mono font-bold text-white">
+            <div className="text-2xl sm:text-3xl font-mono font-bold text-white drop-shadow-[0_0_12px_rgba(255,255,255,0.2)]">
               0.00%
             </div>
-            <div className="text-[11px] text-[#A59E92] mt-1 font-mono">
+            <div className="text-[11px] text-white/40 mt-1 font-mono">
               Atomic double-entry reconciliation
             </div>
           </div>

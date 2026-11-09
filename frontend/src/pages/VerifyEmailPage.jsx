@@ -119,29 +119,30 @@ export default function VerifyEmailPage() {
   }
 
   return (
-    <div className="min-h-[85vh] flex items-center justify-center px-4 sm:px-6 lg:px-8 py-16">
+    <div className="min-h-[85vh] flex items-center justify-center px-4 sm:px-6 lg:px-8 py-16 relative">
       <div className="w-full max-w-md relative">
         
-        {/* Glow behind card */}
-        <div className="absolute -inset-1 bg-gradient-to-r from-[#D4AF37]/20 via-[#22C55E]/20 to-[#D4AF37]/20 rounded-3xl blur-xl opacity-50" />
+        {/* Ambient atmospheric depth lighting behind card */}
+        <div className="absolute -inset-1.5 bg-gradient-to-r from-[#D4AF37]/25 via-emerald-500/15 to-[#D4AF37]/25 rounded-3xl blur-2xl opacity-40 pointer-events-none" />
 
-        <div className="relative rounded-2xl gloss-panel p-8 sm:p-10 border border-[#D4AF37]/30 shadow-[0_20px_50px_rgba(0,0,0,0.8)]">
+        {/* Elevated Spatial Glass Card */}
+        <div className="relative rounded-3xl spatial-glass p-8 sm:p-10 border border-white/[0.08] shadow-[0_25px_70px_rgba(0,0,0,0.95)] backdrop-blur-2xl transition-all duration-300">
           
           {/* Header */}
           <div className="text-center mb-6">
-            <div className="inline-flex items-center justify-center w-14 h-14 rounded-2xl bg-[#14100E] border border-[#22C55E]/40 shadow-[0_0_20px_rgba(34,197,94,0.2)] mb-4">
-              <Mail className="w-7 h-7 text-[#22C55E]" />
+            <div className="inline-flex items-center justify-center w-14 h-14 rounded-2xl bg-black/60 border border-emerald-500/30 shadow-[0_0_25px_rgba(34,197,94,0.25)] mb-4 hover:scale-105 transition-transform duration-300">
+              <Mail className="w-7 h-7 text-emerald-400" />
             </div>
-            <h1 className="font-cinzel font-black text-2xl sm:text-3xl tracking-wide text-transparent bg-clip-text bg-gradient-to-r from-[#FFF] via-[#F5D061] to-[#D4AF37]">
+            <h1 className="font-cinzel font-black text-2xl sm:text-3xl tracking-wide text-transparent bg-clip-text bg-gradient-to-r from-white via-[#F5D061] to-[#D4AF37]">
               VERIFY EMAIL
             </h1>
-            <p className="text-xs sm:text-sm font-mono text-[#9B9487] mt-1.5">
+            <p className="text-xs sm:text-sm font-mono text-white/60 mt-1.5">
               Enter the 6-digit arcane code sent to your email
             </p>
           </div>
 
           {/* Recipient Email Display / Edit */}
-          <div className="mb-6 p-3 rounded-xl bg-[#110D0B] border border-[#241E19] flex items-center justify-between text-xs font-mono">
+          <div className="mb-6 p-3.5 rounded-xl bg-black/40 border border-white/[0.06] flex items-center justify-between text-xs font-mono shadow-inner">
             {isEditingEmail ? (
               <input
                 type="email"
@@ -151,7 +152,7 @@ export default function VerifyEmailPage() {
                   setPendingEmail(e.target.value)
                 }}
                 placeholder="Enter email address"
-                className="bg-transparent border-b border-[#D4AF37] text-white focus:outline-none w-full mr-2 py-0.5"
+                className="bg-transparent border-b border-[#D4AF37] text-white focus:outline-none w-full mr-2 py-0.5 font-mono"
               />
             ) : (
               <span className="text-[#F5D061] truncate font-medium">
@@ -162,7 +163,7 @@ export default function VerifyEmailPage() {
             <button
               type="button"
               onClick={() => setIsEditingEmail(!isEditingEmail)}
-              className="text-[#8E867A] hover:text-[#D4AF37] shrink-0 p-1 transition-colors"
+              className="text-white/40 hover:text-[#D4AF37] shrink-0 p-1.5 transition-colors rounded-lg hover:bg-white/[0.05]"
               title="Edit email"
             >
               <Edit2 className="w-3.5 h-3.5" />
@@ -182,7 +183,7 @@ export default function VerifyEmailPage() {
                   value={digit}
                   onChange={(e) => handleDigitChange(index, e.target.value)}
                   onKeyDown={(e) => handleKeyDown(index, e)}
-                  className="w-11 sm:w-12 h-14 rounded-xl text-center font-mono font-bold text-xl text-[#F5D061] bg-[#0A0807] border border-[#2D2520] focus:border-[#D4AF37] focus:ring-1 focus:ring-[#D4AF37]/50 focus:outline-none transition-all"
+                  className="w-11 sm:w-12 h-14 rounded-xl text-center font-mono font-bold text-xl text-[#F5D061] bg-black/50 border border-white/[0.08] focus:border-[#D4AF37]/70 focus:ring-2 focus:ring-[#D4AF37]/30 focus:outline-none transition-all duration-300 shadow-inner"
                 />
               ))}
             </div>
@@ -190,7 +191,7 @@ export default function VerifyEmailPage() {
             <button
               type="submit"
               disabled={loading || otpDigits.join('').length !== 6}
-              className="w-full py-3.5 rounded-xl font-mono text-xs uppercase tracking-widest font-bold text-[#0B0908] bg-gradient-to-r from-[#D4AF37] via-[#F5D061] to-[#E5C378] hover:shadow-[0_0_25px_rgba(212,175,55,0.4)] transition-all cursor-pointer flex items-center justify-center gap-2 disabled:opacity-50"
+              className="w-full py-3.5 rounded-xl font-mono text-xs uppercase tracking-widest font-bold text-[#0B0908] bg-gradient-to-r from-[#D4AF37] via-[#F5D061] to-[#E5C378] hover:shadow-[0_0_30px_rgba(212,175,55,0.45)] hover:-translate-y-0.5 active:scale-95 transition-all duration-300 cursor-pointer flex items-center justify-center gap-2 disabled:opacity-50"
             >
               {loading ? (
                 <>
@@ -207,10 +208,10 @@ export default function VerifyEmailPage() {
           </form>
 
           {/* Resend Cooldown */}
-          <div className="mt-6 pt-6 border-t border-[#241E19] flex items-center justify-between text-xs font-mono text-[#8E867A]">
+          <div className="mt-6 pt-6 border-t border-white/[0.06] flex items-center justify-between text-xs font-mono text-white/50">
             <span>Didn't receive code?</span>
             {resendCooldown > 0 ? (
-              <span className="text-[#5A5247]">
+              <span className="text-white/30">
                 Resend in {resendCooldown}s
               </span>
             ) : (
@@ -218,9 +219,9 @@ export default function VerifyEmailPage() {
                 type="button"
                 onClick={handleResend}
                 disabled={resending}
-                className="text-[#D4AF37] hover:text-white flex items-center gap-1 cursor-pointer font-semibold"
+                className="text-[#D4AF37] hover:text-white flex items-center gap-1.5 cursor-pointer font-semibold transition-colors"
               >
-                <RotateCcw className="w-3 h-3" />
+                <RotateCcw className="w-3.5 h-3.5" />
                 <span>Resend Code</span>
               </button>
             )}
@@ -229,7 +230,7 @@ export default function VerifyEmailPage() {
           <div className="mt-4 text-center">
             <Link
               to="/login"
-              className="text-[11px] font-mono text-[#6E665A] hover:text-[#9E9689]"
+              className="text-[11px] font-mono text-white/40 hover:text-white/70 transition-colors"
             >
               ← Back to Sign In
             </Link>

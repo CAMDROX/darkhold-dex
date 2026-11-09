@@ -1,7 +1,7 @@
 import React, { useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import { useAuth } from '../context/AuthContext'
-import { Lock, User, ArrowRight, ShieldAlert, Eye, EyeOff, Sparkles, Mail } from 'lucide-react'
+import { Lock, User, ArrowRight, ShieldAlert, Eye, EyeOff } from 'lucide-react'
 import toast from 'react-hot-toast'
 
 export default function LoginPage() {
@@ -62,17 +62,18 @@ export default function LoginPage() {
   }
 
   return (
-    <div className="min-h-[85vh] flex items-center justify-center px-4 sm:px-6 lg:px-8 py-16">
+    <div className="min-h-[85vh] flex items-center justify-center px-4 sm:px-6 lg:px-8 py-16 relative">
       <div className="w-full max-w-md relative">
         
-        {/* Glow behind card */}
-        <div className="absolute -inset-1 bg-gradient-to-r from-[#D4AF37]/20 via-[#EF4444]/20 to-[#D4AF37]/20 rounded-3xl blur-xl opacity-50" />
+        {/* Ambient atmospheric depth lighting behind card */}
+        <div className="absolute -inset-1.5 bg-gradient-to-r from-[#D4AF37]/25 via-rose-500/15 to-[#D4AF37]/25 rounded-3xl blur-2xl opacity-40 pointer-events-none" />
 
-        <div className="relative rounded-2xl gloss-panel p-8 sm:p-10 border border-[#D4AF37]/30 shadow-[0_20px_50px_rgba(0,0,0,0.8)]">
+        {/* Elevated Spatial Glass Card */}
+        <div className="relative rounded-3xl spatial-glass p-8 sm:p-10 border border-white/[0.08] shadow-[0_25px_70px_rgba(0,0,0,0.95)] backdrop-blur-2xl transition-all duration-300">
           
           {/* Header */}
           <div className="text-center mb-8">
-            <div className="inline-flex items-center justify-center w-14 h-14 rounded-2xl bg-[#181310] border border-[#D4AF37]/40 shadow-[0_0_20px_rgba(212,175,55,0.2)] mb-4">
+            <div className="inline-flex items-center justify-center w-14 h-14 rounded-2xl bg-black/60 border border-white/[0.1] shadow-[0_0_25px_rgba(212,175,55,0.25)] mb-4 hover:scale-105 transition-transform duration-300">
               <svg viewBox="0 0 100 100" className="w-8 h-8">
                 <circle cx="50" cy="50" r="44" fill="none" stroke="#D4AF37" strokeWidth="6" />
                 <polygon points="50,16 80,72 20,72" fill="none" stroke="#D4AF37" strokeWidth="6" />
@@ -80,29 +81,29 @@ export default function LoginPage() {
                 <circle cx="50" cy="50" r="14" fill="#EF4444" />
               </svg>
             </div>
-            <h1 className="font-cinzel font-black text-2xl sm:text-3xl tracking-wide text-transparent bg-clip-text bg-gradient-to-r from-[#FFF] via-[#F5D061] to-[#D4AF37]">
+            <h1 className="font-cinzel font-black text-2xl sm:text-3xl tracking-wide text-transparent bg-clip-text bg-gradient-to-r from-white via-[#F5D061] to-[#D4AF37]">
               ENTER CITADEL
             </h1>
-            <p className="text-xs sm:text-sm font-mono text-[#9B9487] mt-1.5">
+            <p className="text-xs sm:text-sm font-mono text-white/60 mt-1.5">
               Access the high-frequency secondary order book
             </p>
           </div>
 
           {/* Unverified Email Warning Banner */}
           {unverifiedEmail && (
-            <div className="mb-6 p-4 rounded-xl bg-[#291010] border border-[#EF4444]/50 text-xs font-mono">
-              <div className="flex items-start gap-2.5 text-[#FCA5A5] mb-2 font-bold">
-                <ShieldAlert className="w-4 h-4 text-[#EF4444] shrink-0 mt-0.5" />
+            <div className="mb-6 p-4 rounded-2xl bg-rose-950/40 border border-rose-500/40 text-xs font-mono shadow-[0_4px_20px_rgba(239,68,68,0.15)] animate-spatial-pop">
+              <div className="flex items-start gap-2.5 text-rose-300 mb-2 font-bold">
+                <ShieldAlert className="w-4 h-4 text-rose-400 shrink-0 mt-0.5" />
                 <span>EMAIL VERIFICATION REQUIRED</span>
               </div>
-              <p className="text-[#E0DBD2] text-[11px] leading-relaxed mb-3">
+              <p className="text-white/80 text-[11px] leading-relaxed mb-3">
                 Your email <strong className="text-white">{unverifiedEmail}</strong> has not been verified with the 6-digit arcane code.
               </p>
               <button
                 type="button"
                 onClick={handleProceedToVerify}
                 disabled={dispatchingOtp}
-                className="w-full py-2.5 rounded-lg bg-[#EF4444]/20 border border-[#EF4444]/60 text-white hover:bg-[#EF4444]/30 font-mono text-xs uppercase tracking-wider font-semibold transition-all cursor-pointer flex items-center justify-center gap-1.5 disabled:opacity-50"
+                className="w-full py-2.5 rounded-xl bg-rose-500/20 border border-rose-500/60 text-white hover:bg-rose-500/30 font-mono text-xs uppercase tracking-wider font-semibold transition-all duration-300 cursor-pointer flex items-center justify-center gap-1.5 disabled:opacity-50 hover:-translate-y-0.5 active:scale-95"
               >
                 {dispatchingOtp ? (
                   <>
@@ -122,11 +123,11 @@ export default function LoginPage() {
           {/* Form */}
           <form onSubmit={handleSubmit} className="space-y-5">
             <div>
-              <label className="block text-xs font-mono text-[#D4AF37] mb-2 uppercase tracking-wider">
+              <label className="block text-xs font-mono text-white/70 mb-2 uppercase tracking-wider">
                 Username or Email
               </label>
               <div className="relative">
-                <div className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-[#736B5E]">
+                <div className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-white/40">
                   <User className="w-4 h-4" />
                 </div>
                 <input
@@ -135,19 +136,19 @@ export default function LoginPage() {
                   value={identifier}
                   onChange={(e) => setIdentifier(e.target.value)}
                   placeholder="sorcerer_99 or you@example.com"
-                  className="w-full pl-10 pr-4 py-3 rounded-xl bg-[#0D0B0A] border border-[#2D2520] focus:border-[#D4AF37] focus:outline-none text-sm text-white placeholder-[#5A5247] font-mono transition-colors"
+                  className="w-full pl-10 pr-4 py-3 rounded-xl bg-black/40 border border-white/[0.08] focus:border-[#D4AF37]/60 focus:ring-1 focus:ring-[#D4AF37]/30 focus:outline-none text-sm text-white placeholder-white/20 font-mono transition-all duration-300 shadow-inner"
                 />
               </div>
             </div>
 
             <div>
               <div className="flex justify-between items-center mb-2">
-                <label className="block text-xs font-mono text-[#D4AF37] uppercase tracking-wider">
+                <label className="block text-xs font-mono text-white/70 uppercase tracking-wider">
                   Password
                 </label>
               </div>
               <div className="relative">
-                <div className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-[#736B5E]">
+                <div className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-white/40">
                   <Lock className="w-4 h-4" />
                 </div>
                 <input
@@ -156,12 +157,12 @@ export default function LoginPage() {
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
                   placeholder="••••••••••••"
-                  className="w-full pl-10 pr-11 py-3 rounded-xl bg-[#0D0B0A] border border-[#2D2520] focus:border-[#D4AF37] focus:outline-none text-sm text-white placeholder-[#5A5247] font-mono transition-colors"
+                  className="w-full pl-10 pr-11 py-3 rounded-xl bg-black/40 border border-white/[0.08] focus:border-[#D4AF37]/60 focus:ring-1 focus:ring-[#D4AF37]/30 focus:outline-none text-sm text-white placeholder-white/20 font-mono transition-all duration-300 shadow-inner"
                 />
                 <button
                   type="button"
                   onClick={() => setShowPassword(!showPassword)}
-                  className="absolute inset-y-0 right-0 pr-3.5 flex items-center text-[#736B5E] hover:text-[#D4AF37] transition-colors"
+                  className="absolute inset-y-0 right-0 pr-3.5 flex items-center text-white/40 hover:text-[#D4AF37] transition-colors"
                 >
                   {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
                 </button>
@@ -171,7 +172,7 @@ export default function LoginPage() {
             <button
               type="submit"
               disabled={loading}
-              className="w-full mt-2 py-3.5 rounded-xl font-mono text-xs uppercase tracking-widest font-bold text-[#0B0908] bg-gradient-to-r from-[#D4AF37] via-[#F5D061] to-[#E5C378] hover:shadow-[0_0_25px_rgba(212,175,55,0.4)] transition-all cursor-pointer flex items-center justify-center gap-2 disabled:opacity-50"
+              className="w-full mt-2 py-3.5 rounded-xl font-mono text-xs uppercase tracking-widest font-bold text-[#0B0908] bg-gradient-to-r from-[#D4AF37] via-[#F5D061] to-[#E5C378] hover:shadow-[0_0_30px_rgba(212,175,55,0.45)] hover:-translate-y-0.5 active:scale-95 transition-all duration-300 cursor-pointer flex items-center justify-center gap-2 disabled:opacity-50"
             >
               {loading ? (
                 <>
@@ -188,11 +189,11 @@ export default function LoginPage() {
           </form>
 
           {/* Footer link */}
-          <div className="mt-8 pt-6 border-t border-[#241E19] text-center text-xs font-mono text-[#8E867A]">
+          <div className="mt-8 pt-6 border-t border-white/[0.06] text-center text-xs font-mono text-white/50">
             <span>Don't have an initiated identity? </span>
             <Link
               to="/signup"
-              className="text-[#F5D061] hover:text-white underline decoration-[#D4AF37]/50 underline-offset-4 font-semibold"
+              className="text-[#F5D061] hover:text-white underline decoration-[#D4AF37]/50 underline-offset-4 font-semibold transition-colors"
             >
               Create Account
             </Link>

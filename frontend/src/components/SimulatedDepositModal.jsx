@@ -6,7 +6,6 @@ import {
   Lock,
   ArrowRight,
   Loader2,
-  CheckCircle2,
   AlertCircle,
   Sparkles,
   Zap,
@@ -105,21 +104,21 @@ export default function SimulatedDepositModal({ isOpen, onClose, onSuccess }) {
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4 sm:p-6 overflow-y-auto">
-      {/* Dark overlay backdrop */}
+      {/* Dark overlay backdrop with blur */}
       <div
-        className="fixed inset-0 bg-[#060504]/85 backdrop-blur-md transition-opacity"
+        className="fixed inset-0 bg-black/75 backdrop-blur-md transition-opacity duration-300"
         onClick={handleClose}
       />
 
-      {/* Modal Dialog Card */}
-      <div className="relative w-full max-w-lg bg-[#0E0B09] border border-[#D4AF37]/40 rounded-2xl shadow-[0_25px_60px_rgba(0,0,0,0.95)] overflow-hidden z-10 transition-all">
+      {/* Modal Dialog Card (Spatial Popover with Diffuse Shadow) */}
+      <div className="relative w-full max-w-lg bg-[#0E0B09]/95 backdrop-blur-2xl border border-white/[0.12] rounded-3xl shadow-[0_30px_90px_rgba(0,0,0,0.98),0_0_50px_rgba(212,175,55,0.08),inset_0_1px_0_rgba(255,255,255,0.15)] overflow-hidden z-10 animate-spatial-pop transition-all">
         {/* Subtle Ambient Gold Flare */}
         <div className="absolute top-0 right-0 w-48 h-48 bg-gradient-to-bl from-[#D4AF37]/15 to-transparent pointer-events-none" />
 
         {/* Modal Header */}
-        <div className="flex items-center justify-between px-6 py-5 border-b border-[#241E1A] bg-[#14100E]">
+        <div className="flex items-center justify-between px-6 py-5 border-b border-white/[0.08] bg-white/[0.02]">
           <div className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-[#2A211B] to-[#120E0C] border border-[#D4AF37]/60 flex items-center justify-center text-[#F5D061] shadow-[0_0_15px_rgba(212,175,55,0.25)]">
+            <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-[#2A211B] to-[#120E0C] border border-[#D4AF37]/60 flex items-center justify-center text-[#F5D061] shadow-[0_0_18px_rgba(212,175,55,0.25),inset_0_1px_0_rgba(255,255,255,0.15)]">
               <CreditCard className="w-5 h-5" />
             </div>
             <div>
@@ -131,7 +130,7 @@ export default function SimulatedDepositModal({ isOpen, onClose, onSuccess }) {
                   TESTNET
                 </span>
               </div>
-              <p className="text-xs font-mono text-[#8E867A]">
+              <p className="text-xs font-mono text-white/50">
                 Deposit fiat test funds into sovereign double-entry ledger
               </p>
             </div>
@@ -141,7 +140,7 @@ export default function SimulatedDepositModal({ isOpen, onClose, onSuccess }) {
             type="button"
             onClick={handleClose}
             disabled={isProcessing}
-            className="p-1.5 rounded-lg text-[#8E867A] hover:text-white hover:bg-[#1E1916] transition-colors disabled:opacity-40"
+            className="p-1.5 rounded-lg text-white/50 hover:text-white hover:bg-white/[0.08] transition-colors disabled:opacity-40 cursor-pointer"
           >
             <X className="w-5 h-5" />
           </button>
@@ -151,9 +150,9 @@ export default function SimulatedDepositModal({ isOpen, onClose, onSuccess }) {
         <div className="p-6 space-y-6">
           {/* SIMULATED RAZORPAY PROCESSING OVERLAY */}
           {isProcessing ? (
-            <div className="py-8 px-4 rounded-xl bg-[#090706] border border-[#3A2D25] text-center space-y-5 animate-fade-in">
+            <div className="py-8 px-4 rounded-2xl bg-white/[0.02] border border-white/[0.08] text-center space-y-5 animate-fade-in shadow-[inset_0_1px_0_rgba(255,255,255,0.06)]">
               {/* Razorpay Simulation Header Pill */}
-              <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-[#0C1A30] border border-[#3B82F6]/40 text-xs font-mono text-[#60A5FA]">
+              <div className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-[#0C1A30] border border-[#3B82F6]/40 text-xs font-mono text-[#60A5FA] shadow-[0_0_15px_rgba(59,130,246,0.2)]">
                 <div className="w-2 h-2 rounded-full bg-[#3B82F6] animate-ping" />
                 <span className="font-bold">RAZORPAY GATEWAY SIMULATOR</span>
               </div>
@@ -173,7 +172,7 @@ export default function SimulatedDepositModal({ isOpen, onClose, onSuccess }) {
                     ? 'Razorpay Processing...'
                     : 'Committing Double-Entry Ledger...'}
                 </h4>
-                <p className="text-xs font-mono text-[#A8A195]">
+                <p className="text-xs font-mono text-white/50">
                   {processingStep === 1
                     ? 'Simulating 3D-Secure payment authorization handshake'
                     : 'Recording balance conservation entries in PostgreSQL'}
@@ -181,8 +180,8 @@ export default function SimulatedDepositModal({ isOpen, onClose, onSuccess }) {
               </div>
 
               {/* Generated Dummy Payment ID Badge */}
-              <div className="max-w-xs mx-auto p-3 rounded-lg bg-[#14100E] border border-[#2A211B] text-left font-mono text-xs space-y-1">
-                <div className="flex items-center justify-between text-[#8E867A]">
+              <div className="max-w-xs mx-auto p-3.5 rounded-xl bg-black/40 border border-white/[0.06] text-left font-mono text-xs space-y-1 shadow-sm">
+                <div className="flex items-center justify-between text-white/50">
                   <span>DUMMY PAYMENT ID:</span>
                   <span className="text-[#22C55E] flex items-center gap-1 font-bold">
                     <ShieldCheck className="w-3 h-3" /> Validated
@@ -191,7 +190,7 @@ export default function SimulatedDepositModal({ isOpen, onClose, onSuccess }) {
                 <div className="text-[#F5D061] font-bold truncate">
                   {simulatedPaymentId || 'pay_sim_...'}
                 </div>
-                <div className="flex items-center justify-between text-[#8E867A] pt-1 border-t border-[#221B16] text-[11px]">
+                <div className="flex items-center justify-between text-white/50 pt-1.5 border-t border-white/[0.06] text-[11px]">
                   <span>AMOUNT:</span>
                   <span className="text-white font-bold">
                     {currency === 'INR' ? '₹' : '$'}
@@ -200,7 +199,7 @@ export default function SimulatedDepositModal({ isOpen, onClose, onSuccess }) {
                 </div>
               </div>
 
-              <div className="flex items-center justify-center gap-2 text-[11px] font-mono text-[#6E645A]">
+              <div className="flex items-center justify-center gap-2 text-[11px] font-mono text-white/40">
                 <Lock className="w-3.5 h-3.5 text-[#22C55E]" />
                 <span>Simulated PCI-DSS 256-Bit SSL Handshake</span>
               </div>
@@ -210,7 +209,7 @@ export default function SimulatedDepositModal({ isOpen, onClose, onSuccess }) {
             <form onSubmit={handleDepositSubmit} className="space-y-5">
               {/* Error Notice */}
               {errorMessage && (
-                <div className="p-3 rounded-xl bg-[#291010] border border-[#EF4444]/40 text-xs font-mono text-[#FCA5A5] flex items-start gap-2.5">
+                <div className="p-3.5 rounded-xl bg-[#291010] border border-[#EF4444]/40 text-xs font-mono text-[#FCA5A5] flex items-start gap-2.5">
                   <AlertCircle className="w-4 h-4 text-[#EF4444] shrink-0 mt-0.5" />
                   <span>{errorMessage}</span>
                 </div>
@@ -218,12 +217,12 @@ export default function SimulatedDepositModal({ isOpen, onClose, onSuccess }) {
 
               {/* Currency Selector & Amount Input */}
               <div className="space-y-2">
-                <label className="block text-xs font-mono uppercase tracking-wider text-[#A8A195]">
+                <label className="block text-xs font-mono uppercase tracking-wider text-white/60">
                   Select Currency & Deposit Amount
                 </label>
-                <div className="flex rounded-xl bg-[#090706] border border-[#3E2F26] focus-within:border-[#D4AF37] focus-within:shadow-[0_0_15px_rgba(212,175,55,0.2)] transition-all overflow-hidden">
+                <div className="flex rounded-2xl bg-black/40 border border-white/[0.08] focus-within:border-[#D4AF37] focus-within:shadow-[0_0_20px_rgba(212,175,55,0.2)] transition-all overflow-hidden shadow-[inset_0_2px_4px_rgba(0,0,0,0.5)]">
                   {/* Currency Select */}
-                  <div className="relative border-r border-[#2A211B] bg-[#14100E]">
+                  <div className="relative border-r border-white/[0.08] bg-white/[0.02]">
                     <select
                       value={currency}
                       onChange={(e) => setCurrency(e.target.value)}
@@ -252,14 +251,14 @@ export default function SimulatedDepositModal({ isOpen, onClose, onSuccess }) {
                     onChange={(e) => setAmount(e.target.value)}
                     placeholder="Enter amount"
                     required
-                    className="flex-1 px-4 py-3 bg-transparent text-white font-mono text-base font-bold placeholder-[#5A5046] focus:outline-none"
+                    className="flex-1 px-4 py-3 bg-transparent text-white font-mono text-base font-bold placeholder-white/30 focus:outline-none"
                   />
                 </div>
               </div>
 
-              {/* Preset Quick-Pills */}
+              {/* Preset Quick-Pills with Tactile Elevation */}
               <div className="space-y-1.5">
-                <span className="text-[11px] font-mono text-[#8E867A] block">
+                <span className="text-[11px] font-mono text-white/50 block">
                   Quick Amount Presets:
                 </span>
                 <div className="flex flex-wrap gap-2">
@@ -268,10 +267,10 @@ export default function SimulatedDepositModal({ isOpen, onClose, onSuccess }) {
                       key={val}
                       type="button"
                       onClick={() => setAmount(val.toString())}
-                      className={`px-3 py-1 rounded-lg text-xs font-mono font-medium border transition-all ${
+                      className={`px-3 py-1.5 rounded-xl text-xs font-mono font-medium border transition-all duration-200 cursor-pointer hover:-translate-y-0.5 hover:scale-[1.02] ${
                         amount === val.toString()
-                          ? 'bg-[#D4AF37]/20 border-[#D4AF37] text-[#F5D061] font-bold shadow-[0_0_10px_rgba(212,175,55,0.3)]'
-                          : 'bg-[#14100E] border-[#2A211B] text-[#A8A195] hover:text-white hover:border-[#D4AF37]/40'
+                          ? 'bg-[#D4AF37]/25 border-[#D4AF37] text-[#F5D061] font-bold shadow-[0_0_12px_rgba(212,175,55,0.3)]'
+                          : 'bg-white/[0.03] border-white/[0.08] text-white/70 hover:text-white hover:border-[#D4AF37]/40'
                       }`}
                     >
                       {currency === 'INR' ? `₹${val.toLocaleString()}` : `$${val.toLocaleString()}`}
@@ -281,7 +280,7 @@ export default function SimulatedDepositModal({ isOpen, onClose, onSuccess }) {
               </div>
 
               {/* Simulation Architecture Explanation Box */}
-              <div className="p-3.5 rounded-xl bg-[#14100E] border border-[#261E1A] space-y-2 text-xs font-mono text-[#8E867A]">
+              <div className="p-4 rounded-2xl bg-white/[0.02] border border-white/[0.06] space-y-2 text-xs font-mono text-white/60">
                 <div className="flex items-center justify-between text-white font-bold">
                   <span className="flex items-center gap-1.5 text-[#D4AF37]">
                     <Sparkles className="w-3.5 h-3.5" />
@@ -289,7 +288,7 @@ export default function SimulatedDepositModal({ isOpen, onClose, onSuccess }) {
                   </span>
                   <span className="text-[10px] text-[#22C55E]">STRICT IDEMPOTENCY</span>
                 </div>
-                <p className="leading-relaxed text-[11px]">
+                <p className="leading-relaxed text-[11px] text-white/50">
                   When you click <strong>Deposit</strong>, a client-side Razorpay loading state is simulated. An idempotent dummy reference ID is dispatched to the Go backend, which updates your sovereign ledger account atomically.
                 </p>
               </div>
@@ -298,7 +297,7 @@ export default function SimulatedDepositModal({ isOpen, onClose, onSuccess }) {
               <button
                 type="submit"
                 disabled={isProcessing}
-                className="w-full py-3.5 px-6 rounded-xl font-mono text-xs uppercase tracking-wider font-bold text-[#0B0908] bg-gradient-to-r from-[#D4AF37] via-[#F5D061] to-[#D4AF37] hover:shadow-[0_0_25px_rgba(212,175,55,0.45)] transition-all flex items-center justify-center gap-2 cursor-pointer shadow-[0_4px_15px_rgba(0,0,0,0.4)]"
+                className="w-full py-4 px-6 rounded-2xl font-mono text-xs uppercase tracking-wider font-bold text-[#0B0908] bg-gradient-to-r from-[#D4AF37] via-[#F5D061] to-[#D4AF37] hover:shadow-[0_0_30px_rgba(212,175,55,0.5)] hover:-translate-y-0.5 hover:scale-[1.01] active:scale-[0.99] transition-all duration-300 flex items-center justify-center gap-2 cursor-pointer shadow-[0_4px_15px_rgba(0,0,0,0.4)]"
               >
                 <Zap className="w-4 h-4 text-[#0B0908]" />
                 <span>
