@@ -15,7 +15,7 @@ import {
 import { useAuth } from '../../context/AuthContext'
 import { useWebSocket } from '../../context/WebSocketContext'
 import { ordersApi } from '../../services/api'
-import toast from 'react-hot-toast'
+import { notify } from '../../utils/notification'
 
 export default function TradingTerminal({
   selectedEvent,
@@ -108,14 +108,20 @@ export default function TradingTerminal({
       const isBuyer = data?.buyer_id === user?.id
       const isSeller = data?.seller_id === user?.id
 
-      if (isBuyer || isSeller) {
-        toast.success(
-          `🎉 Trade Settled! ${isBuyer ? 'Purchased' : 'Sold'} ${tradeQty} ticket(s) @ ₹${tradePrice.toLocaleString()}. Escrow updated!`,
-          {
-            icon: '🏛️',
-            duration: 6000,
-          }
-        )
+      if (isBuyer) {
+        notify.buyOrder({
+          symbol: data?.event_symbol,
+          price: tradePrice,
+          quantity: tradeQty,
+          isMatched: true,
+        })
+      } else if (isSeller) {
+        notify.sellOrder({
+          symbol: data?.event_symbol,
+          price: tradePrice,
+          quantity: tradeQty,
+          isMatched: true,
+        })
       }
 
       // Refresh wallet balance and order book
@@ -135,10 +141,7 @@ export default function TradingTerminal({
       onBalanceRefresh?.()
     })
     const unsubMatched = subscribe('ORDER_MATCHED', (data) => {
-      toast.success(`⚡ Order Matched! Executing trade for ${data?.event_symbol || 'market'}...`, {
-        icon: '🏛️',
-        duration: 4000,
-      })
+      notify.info('Order Matched', `Executing trade for ${data?.event_symbol || 'market'}...`)
       fetchOrderBook()
       onBalanceRefresh?.()
     })
@@ -163,9 +166,7 @@ export default function TradingTerminal({
     if (!selectedEvent) return
 
     if (!isKycVerified) {
-      toast.error('Identity Verification Required: Only KYC-verified traders can execute secondary trades.', {
-        icon: '🛡️',
-      })
+      notify.error('Verification Required', 'Only KYC-verified users can place orders.')
       return
     }
 
@@ -173,16 +174,16 @@ export default function TradingTerminal({
     const numQty = parseInt(quantity, 10)
 
     if (isNaN(numPrice) || numPrice <= 0) {
-      toast.error('Please enter a valid limit price')
+      notify.warning('Invalid Price', 'Please enter a valid limit price.')
       return
     }
     if (isNaN(numQty) || numQty <= 0) {
-      toast.error('Quantity must be at least 1')
+      notify.warning('Invalid Quantity', 'Quantity must be at least 1.')
       return
     }
 
     if (collarError) {
-      toast.error('Cannot place order: Price exceeds dynamic price collar cap!')
+      notify.error('Price Cap Exceeded', 'Price exceeds the dynamic collar cap!')
       return
     }
 
@@ -198,16 +199,25 @@ export default function TradingTerminal({
       })
 
       if (resp && resp.success) {
-        toast.success(
-          `Order Placed (HTTP 200 OK): ${side} ${numQty} ticket(s) @ ₹${numPrice.toLocaleString()}`,
-          { icon: side === 'BUY' ? '🟢' : '🔴' }
-        )
+        if (side === 'BUY') {
+          notify.buyOrder({
+            symbol: selectedEvent?.symbol,
+            price: numPrice,
+            quantity: numQty,
+          })
+        } else {
+          notify.sellOrder({
+            symbol: selectedEvent?.symbol,
+            price: numPrice,
+            quantity: numQty,
+          })
+        }
         onBalanceRefresh?.()
         fetchOrderBook()
       }
     } catch (err) {
       console.error('[TradingTerminal] Order error:', err)
-      toast.error(err.message || 'Failed to place order')
+      notify.error('Order Error', err.message || 'Failed to place order')
     } finally {
       setIsSubmitting(false)
     }
@@ -225,33 +235,33 @@ export default function TradingTerminal({
   return (
     <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
       {/* 1. Left Panel: Order Placement Form (5 cols) */}
-      <div className="lg:col-span-5 rounded-2xl gloss-panel border border-[#2A211B] p-5 sm:p-6 shadow-[0_10px_35px_rgba(0,0,0,0.7)] flex flex-col justify-between">
+      <div className="lg:col-span-5 rounded-2xl spatial-glass border border-white/20 p-5 sm:p-6 shadow-xl shadow-black/40 flex flex-col justify-between transition-all duration-300">
         <div>
-          {/* Side Selector Tabs */}
-          <div className="grid grid-cols-2 gap-2 p-1 rounded-xl bg-[#0B0908] border border-[#201915] mb-5">
+          {/* Side Selector Tabs (Sunken Spatial Tray) */}
+          <div className="grid grid-cols-2 gap-2 p-1.5 rounded-xl bg-[#1B1F29] border border-white/20 mb-5 shadow-inner">
             <button
               type="button"
               onClick={() => setSide('BUY')}
-              className={`py-2.5 rounded-lg font-cinzel font-bold text-xs uppercase tracking-wider transition-all flex items-center justify-center gap-2 cursor-pointer ${
+              className={`py-2.5 rounded-lg font-sans font-bold text-xs uppercase tracking-wider transition-all duration-300 flex items-center justify-center gap-2 cursor-pointer ${
                 side === 'BUY'
-                  ? 'bg-[#22C55E]/15 border border-[#22C55E] text-[#22C55E] shadow-[0_0_15px_rgba(34,197,94,0.3)]'
-                  : 'text-[#8E867A] hover:text-[#C5BEB3] border border-transparent'
+                  ? 'bg-emerald-500/20 border border-emerald-500/60 text-emerald-400 shadow-[0_0_20px_rgba(34,197,94,0.35)]'
+                  : 'text-white/75 hover:text-white/80 border border-transparent'
               }`}
             >
-              <ArrowDownLeft className="w-4 h-4 text-[#22C55E]" />
+              <ArrowDownLeft className="w-4 h-4 text-emerald-400" />
               <span>Buy Ticket</span>
             </button>
 
             <button
               type="button"
               onClick={() => setSide('SELL')}
-              className={`py-2.5 rounded-lg font-cinzel font-bold text-xs uppercase tracking-wider transition-all flex items-center justify-center gap-2 cursor-pointer ${
+              className={`py-2.5 rounded-lg font-sans font-bold text-xs uppercase tracking-wider transition-all duration-300 flex items-center justify-center gap-2 cursor-pointer ${
                 side === 'SELL'
-                  ? 'bg-[#EF4444]/15 border border-[#EF4444] text-[#EF4444] shadow-[0_0_15px_rgba(239,68,68,0.3)]'
-                  : 'text-[#8E867A] hover:text-[#C5BEB3] border border-transparent'
+                  ? 'bg-rose-500/20 border border-rose-500/60 text-rose-400 shadow-[0_0_20px_rgba(239,68,68,0.35)]'
+                  : 'text-white/75 hover:text-white/80 border border-transparent'
               }`}
             >
-              <ArrowUpRight className="w-4 h-4 text-[#EF4444]" />
+              <ArrowUpRight className="w-4 h-4 text-rose-400" />
               <span>Sell Ticket</span>
             </button>
           </div>
@@ -261,9 +271,9 @@ export default function TradingTerminal({
             {/* Price Field */}
             <div>
               <div className="flex items-center justify-between text-xs font-mono mb-1.5">
-                <span className="text-[#B3ABA0]">Limit Price (INR)</span>
-                <span className="text-[#8E867A]">
-                  Cap: <strong className="text-[#F5D061]">₹{maxSellPrice.toLocaleString()}</strong>
+                <span className="text-white/70">Limit Price (INR)</span>
+                <span className="text-white/75">
+                  Cap: <strong className="text-[#F5D061] text-white/90">₹{maxSellPrice.toLocaleString()}</strong>
                 </span>
               </div>
 
@@ -278,16 +288,16 @@ export default function TradingTerminal({
                   value={price}
                   onChange={(e) => setPrice(e.target.value)}
                   placeholder="0"
-                  className={`w-full bg-[#120F0D] border rounded-xl py-2.5 pl-8 pr-4 text-white font-mono text-sm focus:outline-none transition-all ${
+                  className={`w-full bg-[#181B24] border rounded-xl py-2.5 pl-8 pr-4 text-white font-mono text-sm focus:outline-none transition-all duration-300 ${
                     collarError
-                      ? 'border-[#EF4444] text-[#EF4444] focus:ring-1 focus:ring-[#EF4444]'
-                      : 'border-[#2A221C] focus:border-[#D4AF37] focus:ring-1 focus:ring-[#D4AF37]'
+                      ? 'border-rose-500 text-rose-400 focus:ring-1 focus:ring-rose-500'
+                      : 'border-white/20 focus:border-[#D4AF37]/60 focus:ring-1 focus:ring-[#D4AF37]/40 shadow-inner'
                   }`}
                 />
               </div>
 
               {collarError && (
-                <p className="text-[11px] font-mono text-[#EF4444] mt-1.5 flex items-center gap-1">
+                <p className="text-[11px] font-mono text-rose-400 mt-1.5 flex items-center gap-1">
                   <span>{collarError}</span>
                 </p>
               )}
@@ -296,8 +306,8 @@ export default function TradingTerminal({
             {/* Quantity Field */}
             <div>
               <div className="flex items-center justify-between text-xs font-mono mb-1.5">
-                <span className="text-[#B3ABA0]">Ticket Quantity</span>
-                <span className="text-[#8E867A]">
+                <span className="text-white/70">Ticket Quantity</span>
+                <span className="text-white/75">
                   {side === 'BUY' ? (
                     <span>Available: ₹{availableFiat.toLocaleString()}</span>
                   ) : (
@@ -313,7 +323,7 @@ export default function TradingTerminal({
                 value={quantity}
                 onChange={(e) => setQuantity(e.target.value)}
                 placeholder="1"
-                className="w-full bg-[#120F0D] border border-[#2A221C] rounded-xl py-2.5 px-4 text-white font-mono text-sm focus:outline-none focus:border-[#D4AF37] focus:ring-1 focus:ring-[#D4AF37] transition-all"
+                className="w-full bg-[#181B24] border border-white/20 rounded-xl py-2.5 px-4 text-white font-mono text-sm focus:outline-none focus:border-[#D4AF37]/60 focus:ring-1 focus:ring-[#D4AF37]/40 transition-all duration-300 shadow-inner"
               />
 
               <div className="flex items-center gap-2 mt-2">
@@ -322,10 +332,10 @@ export default function TradingTerminal({
                     key={val}
                     type="button"
                     onClick={() => setQuantity(val.toString())}
-                    className={`flex-1 py-1 rounded-md text-[10px] font-mono border transition-all cursor-pointer ${
+                    className={`flex-1 py-1.5 rounded-lg text-[10px] font-mono border transition-all duration-300 cursor-pointer ${
                       parseInt(quantity, 10) === val
-                        ? 'bg-[#D4AF37]/20 border-[#D4AF37] text-[#F5D061]'
-                        : 'bg-[#14100E] border-[#221B17] text-[#8E867A] hover:border-[#D4AF37]/40'
+                        ? 'bg-[#D4AF37]/20 border-[#D4AF37]/60 text-[#F5D061] shadow-[0_0_12px_rgba(212,175,55,0.25)]'
+                        : 'bg-[#181B24] border-white/20 text-white/75 hover:text-white/80 hover:border-white/20'
                     }`}
                   >
                     {val}
@@ -335,26 +345,26 @@ export default function TradingTerminal({
             </div>
 
             {/* Escrow Lock Breakdown */}
-            <div className="p-3 rounded-xl bg-[#0D0B0A] border border-[#221B16] space-y-1.5 text-xs font-mono">
-              <div className="flex items-center justify-between text-[#8E867A]">
+            <div className="p-3.5 rounded-xl bg-[#181B24] border border-white/20 space-y-2 text-xs font-mono shadow-inner">
+              <div className="flex items-center justify-between text-white/75">
                 <span>Order Total:</span>
-                <span className="text-white font-bold">
+                <span className="text-white font-bold text-sm">
                   ₹{(Math.round(parseFloat(price) || 0) * (parseInt(quantity, 10) || 1)).toLocaleString()}
                 </span>
               </div>
-              <div className="flex items-center gap-1.5 text-[10px] text-[#A8A195] pt-1 border-t border-[#1C1613]">
-                <Lock className="w-3 h-3 text-[#D4AF37]" />
+              <div className="flex items-center gap-1.5 text-[10px] text-white/75 pt-2 border-t border-white/15">
+                <Lock className="w-3.5 h-3.5 text-[#D4AF37]" />
                 <span>Escrow locked in PostgreSQL until matched via Redis.</span>
               </div>
             </div>
 
             {/* Submit Button */}
             {!isKycVerified ? (
-              <div className="p-3 rounded-xl bg-[#FB923C]/10 border border-[#FB923C]/30 text-center">
-                <span className="text-xs font-mono text-[#FB923C] block mb-1 font-semibold flex items-center justify-center gap-1.5">
+              <div className="p-3.5 rounded-xl bg-amber-500/10 border border-amber-500/30 text-center">
+                <span className="text-xs font-mono text-amber-400 block mb-1 font-semibold flex items-center justify-center gap-1.5">
                   <ShieldAlert className="w-4 h-4" /> KYC Verification Required
                 </span>
-                <span className="text-[10px] font-mono text-[#A8A195]">
+                <span className="text-[10px] font-mono text-white/75">
                   Only verified traders can participate in secondary order matching.
                 </span>
               </div>
@@ -362,10 +372,10 @@ export default function TradingTerminal({
               <button
                 type="submit"
                 disabled={isSubmitting || !!collarError}
-                className={`w-full py-3.5 rounded-xl font-cinzel font-bold text-sm uppercase tracking-wider transition-all flex items-center justify-center gap-2 cursor-pointer shadow-lg disabled:opacity-50 disabled:cursor-not-allowed ${
+                className={`w-full py-3.5 rounded-xl font-sans font-bold text-xs sm:text-sm uppercase tracking-wider transition-all duration-300 flex items-center justify-center gap-2 cursor-pointer shadow-lg disabled:opacity-50 disabled:cursor-not-allowed ${
                   side === 'BUY'
-                    ? 'bg-gradient-to-r from-[#16A34A] to-[#22C55E] hover:from-[#22C55E] hover:to-[#4ADE80] text-black shadow-[0_0_20px_rgba(34,197,94,0.3)]'
-                    : 'bg-gradient-to-r from-[#DC2626] to-[#EF4444] hover:from-[#EF4444] hover:to-[#F87171] text-white shadow-[0_0_20px_rgba(239,68,68,0.3)]'
+                    ? 'bg-gradient-to-r from-emerald-600 via-emerald-500 to-emerald-400 hover:from-emerald-500 hover:to-emerald-300 text-black shadow-[0_0_25px_rgba(34,197,94,0.35)]'
+                    : 'bg-gradient-to-r from-rose-700 via-rose-600 to-rose-500 hover:from-rose-600 hover:to-rose-400 text-white shadow-[0_0_25px_rgba(239,68,68,0.35)]'
                 }`}
               >
                 {isSubmitting ? (
@@ -386,24 +396,24 @@ export default function TradingTerminal({
       </div>
 
       {/* 2. Right Panel: Level 2 Order Book (7 cols) */}
-      <div className="lg:col-span-7 rounded-2xl gloss-panel border border-[#2A211B] p-5 sm:p-6 shadow-[0_10px_35px_rgba(0,0,0,0.7)] flex flex-col justify-between">
+      <div className="lg:col-span-7 rounded-2xl spatial-glass border border-white/20 p-5 sm:p-6 shadow-xl shadow-black/40 flex flex-col justify-between transition-all duration-300">
         <div>
           {/* Header */}
-          <div className="flex items-center justify-between pb-3 mb-3 border-b border-[#221B16]">
-            <div className="flex items-center gap-2">
+          <div className="flex items-center justify-between pb-3.5 mb-3.5 border-b border-white/20">
+            <div className="flex items-center gap-2.5">
               <Layers className="w-4 h-4 text-[#D4AF37]" />
-              <h3 className="font-cinzel font-bold text-sm text-white tracking-wide">
+              <h3 className="font-sans font-bold text-sm text-white tracking-wide">
                 Level-2 Order Book — {selectedEvent?.symbol || 'L2'}
               </h3>
             </div>
-            <div className="flex items-center gap-1.5 text-[10px] font-mono text-[#22C55E]">
-              <span className="w-1.5 h-1.5 rounded-full bg-[#22C55E] animate-pulse" />
+            <div className="flex items-center gap-1.5 text-[10px] font-mono text-emerald-400 bg-emerald-500/10 border border-emerald-500/30 px-2.5 py-1 rounded-full shadow-[0_0_12px_rgba(34,197,94,0.2)]">
+              <span className="w-1.5 h-1.5 rounded-full bg-emerald-400" />
               <span>ORDER_BOOK_UPDATE (LIVE)</span>
             </div>
           </div>
 
           {/* Column Titles */}
-          <div className="grid grid-cols-4 text-[10px] font-mono text-[#8E867A] uppercase tracking-wider pb-2 px-2 border-b border-[#1A1411]">
+          <div className="grid grid-cols-4 text-[10px] font-mono text-white/75 uppercase tracking-wider pb-2 px-2.5 border-b border-white/20">
             <span>Price (INR)</span>
             <span className="text-right">Size</span>
             <span className="text-right">Orders</span>
@@ -413,7 +423,7 @@ export default function TradingTerminal({
           {/* ASKS (SELL ORDERS) - Red */}
           <div className="space-y-0.5 py-1 min-h-[140px] flex flex-col justify-end">
             {displayAsks.length === 0 ? (
-              <div className="py-6 text-center text-xs font-mono text-[#6A6357]">
+              <div className="py-6 text-center text-xs font-mono text-white/75">
                 No resting ask orders on the book
               </div>
             ) : (
@@ -423,24 +433,24 @@ export default function TradingTerminal({
                   <div
                     key={`ask-${ask.price}-${idx}`}
                     onClick={() => setPrice(ask.price.toString())}
-                    className="relative grid grid-cols-4 text-xs font-mono py-1 px-2 rounded hover:bg-[#EF4444]/10 cursor-pointer transition-colors group"
+                    className="relative grid grid-cols-4 text-xs font-mono py-1.5 px-2.5 rounded hover:bg-rose-500/10 cursor-pointer transition-colors group"
                     title="Click to autofill price"
                   >
                     <div
-                      className="absolute right-0 top-0 bottom-0 bg-[#EF4444]/15 rounded-r pointer-events-none transition-all duration-300"
+                      className="absolute right-0 top-0 bottom-0 bg-gradient-to-l from-rose-500/20 to-transparent rounded-r pointer-events-none transition-all duration-300"
                       style={{ width: `${widthPct}%` }}
                     />
-                    <span className="text-[#EF4444] font-semibold relative z-10 group-hover:underline">
-                      ₹{ask.price.toLocaleString()}
+                    <span className="text-rose-400 font-semibold relative z-10 group-hover:underline">
+                      ₹{ask.price ? Number(ask.price).toLocaleString() : '0'}
                     </span>
-                    <span className="text-right text-[#E0DBD2] relative z-10">
-                      {ask.quantity}
+                    <span className="text-right text-white/90 relative z-10">
+                      {ask.quantity || 0}
                     </span>
-                    <span className="text-right text-[#8E867A] relative z-10">
+                    <span className="text-right text-white/70 relative z-10">
                       {ask.order_count || 1}
                     </span>
-                    <span className="text-right text-[#C0B7A8] text-[11px] relative z-10">
-                      ₹{(ask.price * ask.quantity).toLocaleString()}
+                    <span className="text-right text-white/70 text-[11px] relative z-10">
+                      ₹{((ask.price || 0) * (ask.quantity || 0)).toLocaleString()}
                     </span>
                   </div>
                 )
@@ -449,14 +459,14 @@ export default function TradingTerminal({
           </div>
 
           {/* SPREAD INDICATOR */}
-          <div className="my-2 py-2 px-3 rounded-xl bg-[#120E0C] border border-[#261E18] flex items-center justify-between text-xs font-mono">
-            <div className="flex items-center gap-1.5 text-[#D4AF37]">
+          <div className="my-2.5 py-2.5 px-3.5 rounded-xl bg-[#171A23] border border-white/20 flex items-center justify-between text-xs font-mono shadow-inner">
+            <div className="flex items-center gap-2 text-[#D4AF37]">
               <Activity className="w-3.5 h-3.5 text-[#F5D061]" />
-              <span className="text-[11px] font-semibold">
-                Mid-Market Spread: ₹{spread.toLocaleString()}
+              <span className="text-[11px] font-semibold text-white/90">
+                Mid-Market Spread: <span className="text-[#F5D061]">₹{(spread || 0).toLocaleString()}</span>
               </span>
             </div>
-            <span className="text-[10px] text-[#8E867A]">
+            <span className="text-[10px] text-white/75">
               Click any price row to autofill your order form
             </span>
           </div>
@@ -464,7 +474,7 @@ export default function TradingTerminal({
           {/* BIDS (BUY ORDERS) - Green */}
           <div className="space-y-0.5 py-1 min-h-[140px]">
             {bids.length === 0 ? (
-              <div className="py-6 text-center text-xs font-mono text-[#6A6357]">
+              <div className="py-6 text-center text-xs font-mono text-white/75">
                 No resting buy bids on the book
               </div>
             ) : (
@@ -474,24 +484,24 @@ export default function TradingTerminal({
                   <div
                     key={`bid-${bid.price}-${idx}`}
                     onClick={() => setPrice(bid.price.toString())}
-                    className="relative grid grid-cols-4 text-xs font-mono py-1 px-2 rounded hover:bg-[#22C55E]/10 cursor-pointer transition-colors group"
+                    className="relative grid grid-cols-4 text-xs font-mono py-1.5 px-2.5 rounded hover:bg-emerald-500/10 cursor-pointer transition-colors group"
                     title="Click to autofill price"
                   >
                     <div
-                      className="absolute right-0 top-0 bottom-0 bg-[#22C55E]/15 rounded-r pointer-events-none transition-all duration-300"
+                      className="absolute right-0 top-0 bottom-0 bg-gradient-to-l from-emerald-500/20 to-transparent rounded-r pointer-events-none transition-all duration-300"
                       style={{ width: `${widthPct}%` }}
                     />
-                    <span className="text-[#22C55E] font-semibold relative z-10 group-hover:underline">
-                      ₹{bid.price.toLocaleString()}
+                    <span className="text-emerald-400 font-semibold relative z-10 group-hover:underline">
+                      ₹{bid.price ? Number(bid.price).toLocaleString() : '0'}
                     </span>
-                    <span className="text-right text-[#E0DBD2] relative z-10">
-                      {bid.quantity}
+                    <span className="text-right text-white/90 relative z-10">
+                      {bid.quantity || 0}
                     </span>
-                    <span className="text-right text-[#8E867A] relative z-10">
+                    <span className="text-right text-white/70 relative z-10">
                       {bid.order_count || 1}
                     </span>
-                    <span className="text-right text-[#C0B7A8] text-[11px] relative z-10">
-                      ₹{(bid.price * bid.quantity).toLocaleString()}
+                    <span className="text-right text-white/70 text-[11px] relative z-10">
+                      ₹{((bid.price || 0) * (bid.quantity || 0)).toLocaleString()}
                     </span>
                   </div>
                 )
@@ -500,9 +510,9 @@ export default function TradingTerminal({
           </div>
         </div>
 
-        <div className="pt-3 border-t border-[#1C1613] flex items-center justify-between text-[10px] font-mono text-[#8E867A]">
-          <span className="text-[#22C55E]">● Bids ({bids.length} levels)</span>
-          <span className="text-[#EF4444]">● Asks ({asks.length} levels)</span>
+        <div className="pt-3 border-t border-white/20 flex items-center justify-between text-[10px] font-mono text-white/75">
+          <span className="text-emerald-400 font-medium">● Bids ({bids.length} levels)</span>
+          <span className="text-rose-400 font-medium">● Asks ({asks.length} levels)</span>
         </div>
       </div>
     </div>

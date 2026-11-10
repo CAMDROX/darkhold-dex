@@ -113,6 +113,14 @@ func GetRedisUniversalClient() redis.UniversalClient {
 			Password: os.Getenv("REDIS_PASSWORD"),
 			DB:       0,
 		})
+		ctx, cancel := context.WithTimeout(context.Background(), 800*time.Millisecond)
+		defer cancel()
+		if err := globalRedisClient.Ping(ctx).Err(); err != nil {
+			log.Printf("ℹ️  [Redis Client] Standalone mode: Local Redis offline (%v). Using in-memory hub.", err)
+			_ = globalRedisClient.Close()
+			globalRedisClient = nil
+			return
+		}
 		log.Println("⚡ [Redis Client] Connected via REDIS_ADDR.")
 	})
 	return globalRedisClient

@@ -1,5 +1,5 @@
 import React, { useState } from 'react'
-import { Terminal, Database, Cpu, Layers, GitBranch, Shield, Zap, Code, Check } from 'lucide-react'
+import { Terminal, Database, Cpu, Layers, Check } from 'lucide-react'
 
 export default function TechArchitecture() {
   const [activeSnippet, setActiveSnippet] = useState('go') // 'go' | 'supabase' | 'k6'
@@ -70,64 +70,68 @@ export const options = {
     <section id="architecture" className="relative py-20 px-4 sm:px-6 lg:px-8 max-w-7xl mx-auto">
       
       {/* Header */}
-      <div className="text-center max-w-3xl mx-auto mb-16">
-        <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-[#181412] border border-[#D4AF37]/30 text-xs font-mono text-[#D4AF37] mb-4">
+      <div className="text-center max-w-3xl mx-auto mb-16 relative z-10">
+        <div className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-[#D4AF37]/10 border border-[#D4AF37]/30 text-xs font-mono text-[#F5D061] mb-4 shadow-[0_0_15px_rgba(212,175,55,0.15)]">
           <Layers className="w-3.5 h-3.5 text-[#D4AF37]" />
-          <span>FULL-STACK ARCHITECTURE</span>
+          <span className="font-semibold tracking-wide">FULL-STACK ARCHITECTURE</span>
         </div>
-        <h2 className="font-cinzel font-black text-3xl sm:text-5xl text-white tracking-wide mb-4">
+        <h2 className="font-sans font-black text-3xl sm:text-5xl text-white tracking-wide mb-4">
           System Topology & Pipeline
         </h2>
-        <p className="text-base sm:text-lg text-[#B8B2A6]">
+        <p className="text-base sm:text-lg text-white/75 font-light">
           Engineered as requested: <strong>React</strong> for responsive low-latency frontend, 
           <strong> Go</strong> for ultra-fast in-memory FIFO matching, and <strong>Supabase</strong> for ACID double-entry ledger persistence.
         </p>
       </div>
 
-      {/* 3-Tier Architecture Flow Diagram */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-12">
+      {/* 3-Tier Architecture Flow Diagram (Spatial Bento Grid) */}
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-12 relative z-10">
         
         {/* Tier 1: Frontend */}
-        <div className="gloss-panel rounded-2xl p-6 border-[#D4AF37]/30 hover:border-[#D4AF37]/60 transition-all">
-          <div className="flex items-center justify-between mb-4">
-            <span className="text-[10px] font-mono tracking-widest text-[#D4AF37] uppercase">
-              TIER 1 · CLIENT INTERFACE
-            </span>
-            <div className="w-10 h-10 rounded-lg bg-[#D4AF37]/15 border border-[#D4AF37]/30 flex items-center justify-center text-[#F5D061]">
-              <Layers className="w-5 h-5" />
+        <div className="spatial-card rounded-3xl p-6 sm:p-7 flex flex-col justify-between hover:border-[#D4AF37]/50">
+          <div>
+            <div className="flex items-center justify-between mb-4">
+              <span className="text-[10px] font-mono tracking-widest text-[#F5D061] uppercase font-bold">
+                TIER 1 · CLIENT INTERFACE
+              </span>
+              <div className="w-10 h-10 rounded-xl bg-[#D4AF37]/15 border border-[#D4AF37]/30 flex items-center justify-center text-[#F5D061] shadow-[0_0_15px_rgba(212,175,55,0.2)]">
+                <Layers className="w-5 h-5" />
+              </div>
             </div>
+            <h3 className="font-sans font-bold text-xl text-white mb-2">
+              React 19 & WebSockets
+            </h3>
+            <p className="text-xs text-white/75 mb-4 leading-relaxed font-light">
+              Vite-powered ultra-fast frontend streaming real-time Level 2 depth ladders, order submissions, and Dutch auction ticks.
+            </p>
           </div>
-          <h3 className="font-cinzel font-bold text-xl text-white mb-2">
-            React 19 & WebSockets
-          </h3>
-          <p className="text-xs text-[#A8A195] mb-4 leading-relaxed font-light">
-            Vite-powered ultra-fast frontend streaming real-time Level 2 depth ladders, order submissions, and Dutch auction ticks.
-          </p>
-          <ul className="text-xs font-mono text-[#D6CFC4] space-y-1.5 pt-3 border-t border-[#26201C]">
+          <ul className="text-xs font-mono text-white/70 space-y-2 pt-4 border-t border-white/20">
             <li>• Bidirectional WebSocket streaming</li>
             <li>• SVG / Canvas depth charts</li>
-            <li>• Tailwind glassmorphism tokens</li>
+            <li>• Spatial glassmorphism tokens</li>
             <li>• Microsecond order dispatching</li>
           </ul>
         </div>
 
         {/* Tier 2: Backend */}
-        <div className="gloss-panel rounded-2xl p-6 border-[#22C55E]/40 hover:border-[#22C55E]/70 transition-all shadow-[0_10px_30px_rgba(34,197,94,0.1)]">
-          <div className="flex items-center justify-between mb-4">
-            <span className="text-[10px] font-mono tracking-widest text-[#22C55E] uppercase">
-              TIER 2 · MATCHING ENGINE
-            </span>
-            <div className="w-10 h-10 rounded-lg bg-[#22C55E]/15 border border-[#22C55E]/30 flex items-center justify-center text-[#22C55E]">
-              <Cpu className="w-5 h-5" />
+        <div className="spatial-card rounded-3xl p-6 sm:p-7 flex flex-col justify-between hover:border-emerald-500/50 hover:shadow-xl shadow-black/40">
+          <div>
+            <div className="flex items-center justify-between mb-4">
+              <span className="text-[10px] font-mono tracking-widest text-emerald-400 uppercase font-bold">
+                TIER 2 · MATCHING ENGINE
+              </span>
+              <div className="w-10 h-10 rounded-xl bg-emerald-500/15 border border-emerald-500/30 flex items-center justify-center text-emerald-400 shadow-[0_0_15px_rgba(34,197,94,0.2)]">
+                <Cpu className="w-5 h-5" />
+              </div>
             </div>
+            <h3 className="font-sans font-bold text-xl text-white mb-2">
+              Go In-Memory FIFO Engine
+            </h3>
+            <p className="text-xs text-white/75 mb-4 leading-relaxed font-light">
+              High-frequency Go binary executing limit and market orders using red-black trees, doubly-linked queues, sub-millisecond matching, and dynamic price collars.
+            </p>
           </div>
-          <h3 className="font-cinzel font-bold text-xl text-white mb-2">
-            Go In-Memory FIFO Engine
-          </h3>
-          <p className="text-xs text-[#A8A195] mb-4 leading-relaxed font-light">
-            High-frequency Go binary executing limit and market orders using red-black trees, doubly-linked queues, sub-millisecond matching, and dynamic price collars.
-          </p>
-          <ul className="text-xs font-mono text-[#D6CFC4] space-y-1.5 pt-3 border-t border-[#26201C]">
+          <ul className="text-xs font-mono text-white/70 space-y-2 pt-4 border-t border-white/20">
             <li>• Sub-millisecond latency execution (&lt; 1ms)</li>
             <li>• Anti-scalper dynamic price collars</li>
             <li>• Lock-free concurrency (Goroutines)</li>
@@ -136,22 +140,24 @@ export const options = {
         </div>
 
         {/* Tier 3: Database & Ledger */}
-        <div className="gloss-panel rounded-2xl p-6 border-[#EF4444]/30 hover:border-[#EF4444]/60 transition-all">
-          <div className="flex items-center justify-between mb-4">
-            <span className="text-[10px] font-mono tracking-widest text-[#EF4444] uppercase">
-              TIER 3 · DATABASE & ESCROW
-            </span>
-            <div className="w-10 h-10 rounded-lg bg-[#EF4444]/15 border border-[#EF4444]/30 flex items-center justify-center text-[#EF4444]">
-              <Database className="w-5 h-5" />
+        <div className="spatial-card rounded-3xl p-6 sm:p-7 flex flex-col justify-between hover:border-rose-500/50 hover:shadow-xl shadow-black/40">
+          <div>
+            <div className="flex items-center justify-between mb-4">
+              <span className="text-[10px] font-mono tracking-widest text-rose-400 uppercase font-bold">
+                TIER 3 · DATABASE & ESCROW
+              </span>
+              <div className="w-10 h-10 rounded-xl bg-rose-500/15 border border-rose-500/30 flex items-center justify-center text-rose-400 shadow-[0_0_15px_rgba(239,68,68,0.2)]">
+                <Database className="w-5 h-5" />
+              </div>
             </div>
+            <h3 className="font-sans font-bold text-xl text-white mb-2">
+              Supabase DB Only
+            </h3>
+            <p className="text-xs text-white/75 mb-4 leading-relaxed font-light">
+              Strict persistence layer handling double-entry accounting ledger entries, cryptographic delivery escrow, and tamper-proof trade audits.
+            </p>
           </div>
-          <h3 className="font-cinzel font-bold text-xl text-white mb-2">
-            Supabase DB Only
-          </h3>
-          <p className="text-xs text-[#A8A195] mb-4 leading-relaxed font-light">
-            Strict persistence layer handling double-entry accounting ledger entries, cryptographic delivery escrow, and tamper-proof trade audits.
-          </p>
-          <ul className="text-xs font-mono text-[#D6CFC4] space-y-1.5 pt-3 border-t border-[#26201C]">
+          <ul className="text-xs font-mono text-white/70 space-y-2 pt-4 border-t border-white/20">
             <li>• Double-entry balance conservation</li>
             <li>• Zero phantom tokens / anomalies</li>
             <li>• Barcode delivery escrow state locks</li>
@@ -161,9 +167,9 @@ export const options = {
 
       </div>
 
-      {/* Code Snippet Tabs */}
-      <div className="gloss-panel rounded-2xl border-[#2A231F] overflow-hidden">
-        <div className="flex flex-wrap items-center justify-between px-6 py-4 border-b border-[#241E19] bg-[#0E0C0A]">
+      {/* Code Snippet Tabs (Spatial Glass Console) */}
+      <div className="spatial-glass rounded-3xl border border-white/20 overflow-hidden shadow-xl shadow-black/40">
+        <div className="flex flex-wrap items-center justify-between px-6 py-4 border-b border-white/20 bg-[#1B1F29]">
           <div className="flex items-center gap-2">
             <Terminal className="w-4 h-4 text-[#D4AF37]" />
             <span className="font-mono text-xs text-white font-semibold">
@@ -171,13 +177,13 @@ export const options = {
             </span>
           </div>
 
-          <div className="flex items-center gap-2 mt-2 sm:mt-0">
+          <div className="flex items-center gap-2 mt-2 sm:mt-0 p-1 rounded-xl bg-[#171A23] border border-white/20">
             <button
               onClick={() => setActiveSnippet('go')}
               className={`px-3 py-1.5 rounded-lg text-xs font-mono cursor-pointer transition-all ${
                 activeSnippet === 'go'
-                  ? 'bg-[#22C55E]/20 text-[#86EFAC] border border-[#22C55E]/40'
-                  : 'text-[#8E867A] hover:text-white'
+                  ? 'bg-emerald-500/20 text-emerald-300 border border-emerald-500/40 shadow-sm'
+                  : 'text-white/75 hover:text-white'
               }`}
             >
               Go Matching Engine
@@ -186,8 +192,8 @@ export const options = {
               onClick={() => setActiveSnippet('supabase')}
               className={`px-3 py-1.5 rounded-lg text-xs font-mono cursor-pointer transition-all ${
                 activeSnippet === 'supabase'
-                  ? 'bg-[#D4AF37]/20 text-[#F5D061] border border-[#D4AF37]/40'
-                  : 'text-[#8E867A] hover:text-white'
+                  ? 'bg-[#D4AF37]/20 text-[#F5D061] border border-[#D4AF37]/40 shadow-sm'
+                  : 'text-white/75 hover:text-white'
               }`}
             >
               Supabase Double-Entry SQL
@@ -196,8 +202,8 @@ export const options = {
               onClick={() => setActiveSnippet('k6')}
               className={`px-3 py-1.5 rounded-lg text-xs font-mono cursor-pointer transition-all ${
                 activeSnippet === 'k6'
-                  ? 'bg-[#EF4444]/20 text-[#FCA5A5] border border-[#EF4444]/40'
-                  : 'text-[#8E867A] hover:text-white'
+                  ? 'bg-rose-500/20 text-rose-300 border border-rose-500/40 shadow-sm'
+                  : 'text-white/75 hover:text-white'
               }`}
             >
               k6 / Locust Stress Benchmarks
@@ -205,8 +211,8 @@ export const options = {
           </div>
         </div>
 
-        <div className="p-6 bg-[#080706] overflow-x-auto">
-          <pre className="font-mono text-xs sm:text-sm text-[#E0DBD2] leading-relaxed">
+        <div className="p-6 bg-[#161922] overflow-x-auto">
+          <pre className="font-mono text-xs sm:text-sm text-white/90 leading-relaxed">
             <code>
               {activeSnippet === 'go' && goCode}
               {activeSnippet === 'supabase' && supabaseCode}

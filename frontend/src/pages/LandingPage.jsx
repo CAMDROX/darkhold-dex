@@ -1,4 +1,5 @@
 import React from 'react'
+import ScrollReveal from '../components/ScrollReveal'
 import Hero from '../components/Hero'
 import HeroPreviewWidget from '../components/HeroPreviewWidget'
 import ProblemVsSolution from '../components/ProblemVsSolution'
@@ -11,14 +12,30 @@ import FaqSection from '../components/FaqSection'
 export default function LandingPage() {
   return (
     <>
-      <Hero />
-      <HeroPreviewWidget />
-      <ProblemVsSolution />
-      <CoreFeatures />
-      <InteractiveSimulator />
-      <TechArchitecture />
-      <RubricAlignment />
-      <FaqSection />
+      <ScrollReveal initialVisible>
+        <Hero />
+      </ScrollReveal>
+      <ScrollReveal>
+        <HeroPreviewWidget />
+      </ScrollReveal>
+      <ScrollReveal>
+        <ProblemVsSolution />
+      </ScrollReveal>
+      <ScrollReveal>
+        <CoreFeatures />
+      </ScrollReveal>
+      <ScrollReveal>
+        <InteractiveSimulator />
+      </ScrollReveal>
+      <ScrollReveal>
+        <TechArchitecture />
+      </ScrollReveal>
+      <ScrollReveal>
+        <RubricAlignment />
+      </ScrollReveal>
+      <ScrollReveal>
+        <FaqSection />
+      </ScrollReveal>
     </>
   )
 }

@@ -465,7 +465,7 @@ func ListMyOrders(w http.ResponseWriter, r *http.Request) {
 		FROM public.orders
 		WHERE user_id = $1
 		ORDER BY created_at DESC
-		LIMIT 50;
+		LIMIT 200;
 	`, claims.UserID)
 	if err != nil {
 		writeOrderError(w, http.StatusInternalServerError, "Failed to query orders", "DB_ERROR")
@@ -566,7 +566,7 @@ func GetMarketTrades(w http.ResponseWriter, r *http.Request) {
 		FROM public.trades
 		WHERE event_symbol = $1
 		ORDER BY executed_at DESC
-		LIMIT 50;
+		LIMIT 200;
 	`, symbol)
 	if err != nil {
 		writeOrderError(w, http.StatusInternalServerError, "Failed to query market trades", "DB_ERROR")
