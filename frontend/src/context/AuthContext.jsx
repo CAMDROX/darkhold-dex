@@ -1,6 +1,6 @@
 import React, { createContext, useContext, useState, useEffect } from 'react'
 import { authApi, tokenStorage } from '../services/api'
-import toast from 'react-hot-toast'
+import { notify } from '../utils/notification'
 
 const AuthContext = createContext(null)
 
@@ -29,7 +29,7 @@ export function AuthProvider({ children }) {
           const userData = await authApi.getMe()
           setUser(userData)
           tokenStorage.setAuth(token, tokenStorage.getRefreshToken(), userData)
-        } catch (err) {
+        } catch {
           // Token invalid or expired
           tokenStorage.clearAuth()
           setUser(null)
@@ -43,7 +43,7 @@ export function AuthProvider({ children }) {
     const handleAuthExpired = () => {
       tokenStorage.clearAuth()
       setUser(null)
-      toast.error('Session expired. Please sign in again.')
+      notify.error('Session Expired', 'Your authentication session has expired. Please sign in again.')
     }
 
     window.addEventListener('auth:expired', handleAuthExpired)
@@ -57,9 +57,7 @@ export function AuthProvider({ children }) {
       tokenStorage.setAuth(data.access_token, data.refresh_token, data.user)
       setUser(data.user)
       savePendingEmail('')
-      toast.success(`Welcome back, ${data.user.username}!`, {
-        icon: '⚡',
-      })
+      notify.success('Session Authenticated', `Welcome back, ${data.user.username}! You are now signed in.`)
       return data
     } catch (err) {
       if (err.code === 'EMAIL_NOT_VERIFIED' || err.status === 403) {
@@ -73,9 +71,7 @@ export function AuthProvider({ children }) {
   const signup = async (email, username, password) => {
     const data = await authApi.signup(email, username, password)
     savePendingEmail(email)
-    toast.success('Verification code dispatched to your email!', {
-      icon: '📧',
-    })
+    notify.info('Verification Dispatched', 'A 6-digit confirmation code has been dispatched to your email address.')
     return data
   }
 
@@ -85,19 +81,14 @@ export function AuthProvider({ children }) {
     tokenStorage.setAuth(data.access_token, data.refresh_token, data.user)
     setUser(data.user)
     savePendingEmail('')
-    toast.success('Email verified! Please submit your government ID to complete verification.', {
-      icon: '🛡️',
-      duration: 5000,
-    })
+    notify.success('Email Verified', 'Email address confirmed. Please submit your government proof document to unlock trading.')
     return data
   }
 
   // Resend OTP handler
   const resendOTP = async (email) => {
     const data = await authApi.resendOTP(email)
-    toast.success('A new 6-digit code has been sent.', {
-      icon: '📨',
-    })
+    notify.info('OTP Re-sent', 'A new 6-digit verification code has been dispatched to your inbox.')
     return data
   }
 
@@ -108,10 +99,7 @@ export function AuthProvider({ children }) {
       tokenStorage.setAuth(null, null, res.user)
       setUser(res.user)
     }
-    toast.success('Government ID submitted! Your verification is now pending admin review.', {
-      icon: '⏳',
-      duration: 5000,
-    })
+    notify.info('Verification Pending', 'Government ID submitted. Your proof document is now pending compliance review.')
     return res
   }
 
@@ -136,9 +124,7 @@ export function AuthProvider({ children }) {
     } finally {
       tokenStorage.clearAuth()
       setUser(null)
-      toast.success('Signed out successfully.', {
-        icon: '🔒',
-      })
+      notify.info('Signed Out', 'Your session has been terminated safely.')
     }
   }
 

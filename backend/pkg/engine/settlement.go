@@ -22,8 +22,8 @@ type TradeEmailMeta struct {
 	SellerID    uuid.UUID
 	EventSymbol string
 	Quantity    int
-	Price       float64
-	TotalAmount float64
+	Price       int64
+	TotalAmount int64
 	TradeID     string
 	NewQRHash   string
 }
@@ -85,7 +85,7 @@ func settleSingleTrade(ctx context.Context, tx pgx.Tx, trade *models.Trade) (*Tr
 	// 1. Fetch Taker & Maker Order details
 	var takerUserID, makerUserID uuid.UUID
 	var takerSide, makerSide string
-	var takerPrice, makerPrice float64
+	var takerPrice, makerPrice int64
 	var eventSymbol, quoteCurrency string
 
 	err := tx.QueryRow(ctx, `
@@ -105,7 +105,7 @@ func settleSingleTrade(ctx context.Context, tx pgx.Tx, trade *models.Trade) (*Tr
 	}
 
 	var buyerID, sellerID uuid.UUID
-	var buyerLimitPrice float64
+	var buyerLimitPrice int64
 
 	if takerSide == "BUY" {
 		buyerID = takerUserID
@@ -212,7 +212,7 @@ func settleSingleTrade(ctx context.Context, tx pgx.Tx, trade *models.Trade) (*Tr
 
 	// 8. Double-Entry Ledger Writes
 	// A: Swap Fiat (Buyer's locked fiat -> Seller's available fiat)
-	fiatTradeAmount := trade.Price * float64(trade.Quantity)
+	fiatTradeAmount := trade.Price * int64(trade.Quantity)
 	_, err = tx.Exec(ctx, `
 		INSERT INTO public.ledger_entries (transaction_id, account_id, amount)
 		VALUES 
@@ -224,7 +224,7 @@ func settleSingleTrade(ctx context.Context, tx pgx.Tx, trade *models.Trade) (*Tr
 	}
 
 	// B: Swap Ticket Tokens (Seller's locked ticket -> Buyer's available ticket)
-	ticketQty := float64(trade.Quantity)
+	ticketQty := int64(trade.Quantity)
 	_, err = tx.Exec(ctx, `
 		INSERT INTO public.ledger_entries (transaction_id, account_id, amount)
 		VALUES 
@@ -237,7 +237,7 @@ func settleSingleTrade(ctx context.Context, tx pgx.Tx, trade *models.Trade) (*Tr
 
 	// C: Refund Buyer Excess Locked Fiat (if limit price > trade execution price)
 	if buyerLimitPrice > trade.Price {
-		excessRefund := (buyerLimitPrice - trade.Price) * float64(trade.Quantity)
+		excessRefund := (buyerLimitPrice - trade.Price) * int64(trade.Quantity)
 		if excessRefund > 0 {
 			_, err = tx.Exec(ctx, `
 				INSERT INTO public.ledger_entries (transaction_id, account_id, amount)

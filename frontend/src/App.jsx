@@ -14,6 +14,8 @@ import DashboardPage from './pages/DashboardPage'
 import AssetsPage from './pages/AssetsPage'
 import ProfilePage from './pages/ProfilePage'
 import AdminVerificationsPage from './pages/AdminVerificationsPage'
+import AuctionsPage from './pages/AuctionsPage'
+import ErrorBoundary from './components/ErrorBoundary'
 
 // Protected Route wrapper
 function ProtectedRoute({ children }) {
@@ -40,18 +42,20 @@ function AppContent() {
     location.pathname.startsWith('/dashboard') || 
     location.pathname.startsWith('/assets') || 
     location.pathname.startsWith('/profile') || 
-    location.pathname.startsWith('/admin')
+    location.pathname.startsWith('/admin') ||
+    location.pathname.startsWith('/auctions')
 
   return (
-    <div className="min-h-screen bg-[#080706] text-[#E5E0D8] selection:bg-[#D4AF37]/30 selection:text-white relative">
-      {/* Background Arcane Grid Texture */}
-      <div className="fixed inset-0 pointer-events-none arcane-grid-bg opacity-40 z-0" />
+    <div className="min-h-screen bg-[#14161C] text-[#F2EFE9] selection:bg-[#D4AF37]/30 selection:text-white relative">
+      {/* Subtle Architectural Grid Texture */}
+      <div className="fixed inset-0 pointer-events-none arcane-grid-bg opacity-35 z-0" />
 
       {/* Main Content Layers */}
       <div className="relative z-10 flex flex-col min-h-screen">
         {isAppRoute ? <AppNavbar /> : <Navbar />}
         <main className="flex-1">
-          <Routes>
+          <ErrorBoundary>
+            <Routes>
             <Route path="/" element={<LandingPage />} />
             <Route path="/login" element={<LoginPage />} />
             <Route path="/signup" element={<SignupPage />} />
@@ -75,6 +79,14 @@ function AppContent() {
               }
             />
             <Route
+              path="/auctions"
+              element={
+                <ProtectedRoute>
+                  <AuctionsPage />
+                </ProtectedRoute>
+              }
+            />
+            <Route
               path="/profile"
               element={
                 <ProtectedRoute>
@@ -94,39 +106,31 @@ function AppContent() {
             {/* Fallback */}
             <Route path="*" element={<Navigate to="/" replace />} />
           </Routes>
-        </main>
+        </ErrorBoundary>
+      </main>
         <Footer />
       </div>
 
-      {/* Glossy Darkhold Toaster Notifications */}
+      {/* Centralized Spatial Toaster Notifications */}
       <Toaster
         position="top-right"
+        containerStyle={{
+          top: 24,
+          right: 24,
+          zIndex: 9999,
+        }}
         toastOptions={{
+          duration: 5000,
           style: {
-            background: '#14100E',
+            background: '#222631',
+            backdropFilter: 'blur(24px)',
             color: '#F4EDE0',
-            border: '1px solid rgba(212, 175, 55, 0.35)',
-            boxShadow: '0 10px 30px rgba(0, 0, 0, 0.8)',
-            fontFamily: 'JetBrains Mono, monospace',
-            fontSize: '12px',
-            borderRadius: '12px',
-          },
-          success: {
-            iconTheme: {
-              primary: '#22C55E',
-              secondary: '#080706',
-            },
-          },
-          error: {
-            iconTheme: {
-              primary: '#EF4444',
-              secondary: '#080706',
-            },
-            style: {
-              background: '#200D0D',
-              border: '1px solid rgba(239, 68, 68, 0.4)',
-              color: '#FCA5A5',
-            },
+            border: '1px solid rgba(255, 255, 255, 0.22)',
+            boxShadow: '0 16px 36px rgba(0, 0, 0, 0.5), inset 0 1px 0 rgba(255, 255, 255, 0.12)',
+            fontFamily: 'Outfit, sans-serif',
+            fontSize: '13px',
+            borderRadius: '14px',
+            padding: '12px 18px',
           },
         }}
       />

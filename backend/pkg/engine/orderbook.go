@@ -3,7 +3,6 @@ package engine
 import (
 	"errors"
 	"fmt"
-	"math"
 	"sync"
 	"time"
 
@@ -19,14 +18,14 @@ var (
 	ErrInsufficientLiquidity = errors.New("insufficient liquidity to fulfill market order")
 )
 
-// ToPriceCents converts float64 price to int64 cents to eliminate floating-point drift
-func ToPriceCents(price float64) int64 {
-	return int64(math.Round(price * 100.0))
+// ToPriceCents converts integer price to key cents
+func ToPriceCents(price int64) int64 {
+	return price
 }
 
-// FromPriceCents converts int64 cents back to float64
-func FromPriceCents(cents int64) float64 {
-	return float64(cents) / 100.0
+// FromPriceCents converts int64 key back to price
+func FromPriceCents(cents int64) int64 {
+	return cents
 }
 
 // isSelfTradePrevented determines if an order should be prevented from matching against itself (wash-trading guard).
@@ -98,7 +97,7 @@ func (q *OrderQueue) PopHead() *OrderNode {
 // PriceLevel holds an O(1) intrusive FIFO queue of resting orders at an exact price tier
 type PriceLevel struct {
 	PriceCents int64
-	Price      float64
+	Price      int64
 	Queue      *OrderQueue
 }
 
@@ -159,7 +158,7 @@ func acquireTrade() *models.Trade {
 type OrderBook struct {
 	mu           sync.RWMutex
 	EventSymbol  string
-	MaxSellPrice float64 // Anti-scalping collar ceiling
+	MaxSellPrice int64 // Anti-scalping collar ceiling
 
 	// Red-Black Trees for O(1) min/max and O(log L) price level operations
 	bidsTree *RBTree // Highest price at Max()
@@ -174,7 +173,7 @@ type OrderBook struct {
 }
 
 // NewOrderBook creates a new high-frequency OrderBook instance
-func NewOrderBook(eventSymbol string, maxSellPrice float64) *OrderBook {
+func NewOrderBook(eventSymbol string, maxSellPrice int64) *OrderBook {
 	return &OrderBook{
 		EventSymbol:  eventSymbol,
 		MaxSellPrice: maxSellPrice,
@@ -189,7 +188,7 @@ func NewOrderBook(eventSymbol string, maxSellPrice float64) *OrderBook {
 // ValidateCollar checks if order price breaches the anti-scalping price ceiling
 func (ob *OrderBook) ValidateCollar(order *models.Order) error {
 	if ob.MaxSellPrice > 0 && order.Price > ob.MaxSellPrice {
-		return fmt.Errorf("%w: price ₹%.2f exceeds collar ceiling of ₹%.2f for %s",
+		return fmt.Errorf("%w: price ₹%d exceeds collar ceiling of ₹%d for %s",
 			ErrCollarBreach, order.Price, ob.MaxSellPrice, ob.EventSymbol)
 	}
 	return nil
@@ -480,7 +479,7 @@ func (ob *OrderBook) MatchCrossedOrdersLocked() []*models.Trade {
 
 		// Maker is the older resting order
 		var makerID, takerID uuid.UUID
-		var execPrice float64
+		var execPrice int64
 		if bestAsk.CreatedAt.Before(bestBid.CreatedAt) {
 			makerID = bestAsk.ID
 			takerID = bestBid.ID
@@ -656,17 +655,17 @@ func (ob *OrderBook) GetL2Depth(limit int) models.L2OrderBook {
 		})
 	}
 
-	bestBid := 0.0
+	var bestBid int64
 	if maxNode := ob.bidsTree.Max(); maxNode != nil && maxNode.Value != nil {
 		bestBid = maxNode.Value.Price
 	}
 
-	bestAsk := 0.0
+	var bestAsk int64
 	if minNode := ob.asksTree.Min(); minNode != nil && minNode.Value != nil {
 		bestAsk = minNode.Value.Price
 	}
 
-	spread := 0.0
+	var spread int64
 	if bestAsk > 0 && bestBid > 0 {
 		spread = bestAsk - bestBid
 	}

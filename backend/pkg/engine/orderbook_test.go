@@ -11,7 +11,7 @@ import (
 
 // TestSelfTradePrevention verifies that orders placed by the same user NEVER match against each other
 func TestSelfTradePrevention(t *testing.T) {
-	ob := NewOrderBook("WEBSTER_26", 2000.0)
+	ob := NewOrderBook("WEBSTER_26", 2000)
 	userA := uuid.New()
 	userB := uuid.New()
 
@@ -22,7 +22,7 @@ func TestSelfTradePrevention(t *testing.T) {
 		EventSymbol:    "WEBSTER_26",
 		Side:           models.SideBuy,
 		OrderType:      models.OrderTypeLimit,
-		Price:          150.0,
+		Price:          150,
 		Quantity:       2,
 		FilledQuantity: 0,
 		Status:         models.OrderStatusOpen,
@@ -44,7 +44,7 @@ func TestSelfTradePrevention(t *testing.T) {
 		EventSymbol:    "WEBSTER_26",
 		Side:           models.SideSell,
 		OrderType:      models.OrderTypeLimit,
-		Price:          150.0,
+		Price:          150,
 		Quantity:       1,
 		FilledQuantity: 0,
 		Status:         models.OrderStatusOpen,
@@ -73,7 +73,7 @@ func TestSelfTradePrevention(t *testing.T) {
 		EventSymbol:    "WEBSTER_26",
 		Side:           models.SideSell,
 		OrderType:      models.OrderTypeLimit,
-		Price:          150.0,
+		Price:          150,
 		Quantity:       1,
 		FilledQuantity: 0,
 		Status:         models.OrderStatusOpen,
@@ -90,8 +90,8 @@ func TestSelfTradePrevention(t *testing.T) {
 	}
 
 	trade := tradesValid[0]
-	if trade.Price != 150.0 {
-		t.Errorf("expected trade price 150.0, got %.2f", trade.Price)
+	if trade.Price != 150 {
+		t.Errorf("expected trade price 150, got %d", trade.Price)
 	}
 	if trade.Quantity != 1 {
 		t.Errorf("expected trade quantity 1, got %d", trade.Quantity)
@@ -103,7 +103,7 @@ func TestSelfTradePrevention(t *testing.T) {
 
 // TestPriceTimeFIFO verifies strict FIFO queuing where older orders at the same price execute first
 func TestPriceTimeFIFO(t *testing.T) {
-	ob := NewOrderBook("COLDPLAY_26", 5000.0)
+	ob := NewOrderBook("COLDPLAY_26", 5000)
 	userA := uuid.New()
 	userB := uuid.New()
 	buyerC := uuid.New()
@@ -115,7 +115,7 @@ func TestPriceTimeFIFO(t *testing.T) {
 		EventSymbol:    "COLDPLAY_26",
 		Side:           models.SideSell,
 		OrderType:      models.OrderTypeLimit,
-		Price:          500.0,
+		Price:          500,
 		Quantity:       1,
 		FilledQuantity: 0,
 		Status:         models.OrderStatusOpen,
@@ -130,7 +130,7 @@ func TestPriceTimeFIFO(t *testing.T) {
 		EventSymbol:    "COLDPLAY_26",
 		Side:           models.SideSell,
 		OrderType:      models.OrderTypeLimit,
-		Price:          500.0,
+		Price:          500,
 		Quantity:       1,
 		FilledQuantity: 0,
 		Status:         models.OrderStatusOpen,
@@ -145,7 +145,7 @@ func TestPriceTimeFIFO(t *testing.T) {
 		EventSymbol:    "COLDPLAY_26",
 		Side:           models.SideBuy,
 		OrderType:      models.OrderTypeLimit,
-		Price:          500.0,
+		Price:          500,
 		Quantity:       1,
 		FilledQuantity: 0,
 		Status:         models.OrderStatusOpen,
@@ -174,7 +174,7 @@ func TestPriceTimeFIFO(t *testing.T) {
 
 // TestDynamicCollarCeiling verifies that orders breaching the anti-scalping ceiling are rejected
 func TestDynamicCollarCeiling(t *testing.T) {
-	ob := NewOrderBook("WEBSTER_26", 1500.0) // Collar cap = ₹1500.0
+	ob := NewOrderBook("WEBSTER_26", 1500) // Collar cap = ₹1500
 
 	predatoryOrder := &models.Order{
 		ID:             uuid.New(),
@@ -182,7 +182,7 @@ func TestDynamicCollarCeiling(t *testing.T) {
 		EventSymbol:    "WEBSTER_26",
 		Side:           models.SideSell,
 		OrderType:      models.OrderTypeLimit,
-		Price:          1501.0, // Exceeds collar cap by ₹1
+		Price:          1501, // Exceeds collar cap by ₹1
 		Quantity:       1,
 		FilledQuantity: 0,
 		Status:         models.OrderStatusOpen,
@@ -196,7 +196,7 @@ func TestDynamicCollarCeiling(t *testing.T) {
 
 // TestO1Cancellation verifies that cancelling arbitrary orders works in O(1) without error
 func TestO1Cancellation(t *testing.T) {
-	ob := NewOrderBook("ED_SHEERAN", 3000.0)
+	ob := NewOrderBook("ED_SHEERAN", 3000)
 	user := uuid.New()
 
 	orders := make([]*models.Order, 100)
@@ -207,7 +207,7 @@ func TestO1Cancellation(t *testing.T) {
 			EventSymbol:    "ED_SHEERAN",
 			Side:           models.SideBuy,
 			OrderType:      models.OrderTypeLimit,
-			Price:          100.0 + float64(i%10),
+			Price:          100 + int64(i%10),
 			Quantity:       1,
 			FilledQuantity: 0,
 			Status:         models.OrderStatusOpen,
@@ -238,7 +238,7 @@ func TestO1Cancellation(t *testing.T) {
 
 // BenchmarkOrderBook_Match measures throughput and nanoseconds per match
 func BenchmarkOrderBook_Match(b *testing.B) {
-	ob := NewOrderBook("BENCH_EVENT", 10000.0)
+	ob := NewOrderBook("BENCH_EVENT", 10000)
 	userA := uuid.New()
 	userB := uuid.New()
 
@@ -250,7 +250,7 @@ func BenchmarkOrderBook_Match(b *testing.B) {
 			EventSymbol:    "BENCH_EVENT",
 			Side:           models.SideSell,
 			OrderType:      models.OrderTypeLimit,
-			Price:          100.0 + float64(i%50),
+			Price:          100 + int64(i%50),
 			Quantity:       10000,
 			FilledQuantity: 0,
 			Status:         models.OrderStatusOpen,
@@ -269,7 +269,7 @@ func BenchmarkOrderBook_Match(b *testing.B) {
 			EventSymbol:    "BENCH_EVENT",
 			Side:           models.SideBuy,
 			OrderType:      models.OrderTypeLimit,
-			Price:          140.0,
+			Price:          140,
 			Quantity:       1,
 			FilledQuantity: 0,
 			Status:         models.OrderStatusOpen,

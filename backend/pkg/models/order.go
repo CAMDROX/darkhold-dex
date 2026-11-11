@@ -38,7 +38,7 @@ type Order struct {
 	QuoteCurrency  string      `json:"quote_currency"`
 	Side           OrderSide   `json:"side"`
 	OrderType      OrderType   `json:"order_type"`
-	Price          float64     `json:"price"`
+	Price          int64       `json:"price"`
 	Quantity       int         `json:"quantity"`
 	FilledQuantity int         `json:"filled_quantity"`
 	Status         OrderStatus `json:"status"`
@@ -57,16 +57,16 @@ type Trade struct {
 	TakerOrderID uuid.UUID `json:"taker_order_id"`
 	MakerOrderID uuid.UUID `json:"maker_order_id"`
 	EventSymbol  string    `json:"event_symbol"`
-	Price        float64   `json:"price"`
+	Price        int64     `json:"price"`
 	Quantity     int       `json:"quantity"`
 	ExecutedAt   time.Time `json:"executed_at"`
 }
 
 // L2PriceLevel aggregates depth volume at a specific price
 type L2PriceLevel struct {
-	Price      float64 `json:"price"`
-	Quantity   int     `json:"quantity"`
-	OrderCount int     `json:"order_count"`
+	Price      int64 `json:"price"`
+	Quantity   int   `json:"quantity"`
+	OrderCount int   `json:"order_count"`
 }
 
 // L2OrderBook is the aggregated Level-2 order book depth ladder
@@ -75,20 +75,20 @@ type L2OrderBook struct {
 	Symbol      string         `json:"symbol"`
 	Bids        []L2PriceLevel `json:"bids"`
 	Asks        []L2PriceLevel `json:"asks"`
-	Spread      float64        `json:"spread"`
-	BestBid     float64        `json:"best_bid"`
-	BestAsk     float64        `json:"best_ask"`
+	Spread      int64          `json:"spread"`
+	BestBid     int64          `json:"best_bid"`
+	BestAsk     int64          `json:"best_ask"`
 	Timestamp   time.Time      `json:"timestamp"`
 }
 
 // PlaceOrderRequest payload submitted from UI
 type PlaceOrderRequest struct {
-	EventSymbol   string  `json:"event_symbol"`
-	Side          string  `json:"side"`
-	OrderType     string  `json:"order_type"`
-	Price         float64 `json:"price"`
-	Quantity      int     `json:"quantity"`
-	QuoteCurrency string  `json:"quote_currency,omitempty"`
+	EventSymbol   string `json:"event_symbol"`
+	Side          string `json:"side"`
+	OrderType     string `json:"order_type"`
+	Price         int64  `json:"price"`
+	Quantity      int    `json:"quantity"`
+	QuoteCurrency string `json:"quote_currency,omitempty"`
 }
 
 // PlaceOrderResponse returned after validation & matching

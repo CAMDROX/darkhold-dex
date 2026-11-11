@@ -2,7 +2,6 @@ import React, { useState, useEffect } from 'react'
 import {
   X,
   Flame,
-  Timer,
   AlertTriangle,
   Loader2,
   Ticket,
@@ -10,7 +9,8 @@ import {
   Info,
 } from 'lucide-react'
 import { ticketsApi, auctionsApi } from '../../services/api'
-import toast from 'react-hot-toast'
+import { notify } from '../../utils/notification'
+import ThemedDropdown from '../ThemedDropdown'
 
 export default function CreateDutchAuctionModal({
   selectedEvent,
@@ -59,15 +59,15 @@ export default function CreateDutchAuctionModal({
 
     // Pre-populate sensible prices
     if (faceValue > 0) {
-      setStartPrice(maxSellPrice > 0 ? (maxSellPrice * 0.95).toFixed(2) : (faceValue * 1.2).toFixed(2))
-      setReservePrice((faceValue * 0.8).toFixed(2))
+      setStartPrice(maxSellPrice > 0 ? String(Math.round(maxSellPrice * 0.95)) : String(Math.round(faceValue * 1.2)))
+      setReservePrice(String(Math.round(faceValue * 0.8)))
     }
   }, [isOpen, selectedEvent, faceValue, maxSellPrice])
 
   // Validate dynamic collar
   useEffect(() => {
-    const sPrice = parseFloat(startPrice)
-    const rPrice = parseFloat(reservePrice)
+    const sPrice = Math.round(parseFloat(startPrice) || 0)
+    const rPrice = Math.round(parseFloat(reservePrice) || 0)
 
     if (maxSellPrice > 0 && sPrice > maxSellPrice) {
       setCollarError(`Starting price cannot exceed the dynamic collar cap of ₹${maxSellPrice}`)
@@ -83,22 +83,22 @@ export default function CreateDutchAuctionModal({
   const handleSubmit = async (e) => {
     e.preventDefault()
     if (!selectedRelicId) {
-      toast.error('Please select an available ticket to auction')
+      notify.warning('Ticket Required', 'Please select an available ticket pass from your inventory to auction.')
       return
     }
-    const numStart = parseFloat(startPrice)
-    const numReserve = parseFloat(reservePrice)
+    const numStart = Math.round(parseFloat(startPrice) || 0)
+    const numReserve = Math.round(parseFloat(reservePrice) || 0)
 
     if (isNaN(numStart) || isNaN(numReserve) || numStart <= 0 || numReserve <= 0) {
-      toast.error('Please provide valid positive prices')
+      notify.warning('Invalid Prices', 'Please provide valid positive start and reserve floor prices.')
       return
     }
     if (numStart <= numReserve) {
-      toast.error('Starting price must be higher than reserve price')
+      notify.warning('Price Conflict', 'Starting price must be strictly higher than reserve floor price.')
       return
     }
     if (collarError) {
-      toast.error(collarError)
+      notify.error('Anti-Scalper Collar Breach', collarError)
       return
     }
 
@@ -113,15 +113,17 @@ export default function CreateDutchAuctionModal({
       })
 
       if (res?.success) {
-        toast.success('🔥 Dutch Auction launched! Price is decaying live.', {
-          icon: '⚡',
+        notify.auctionCreated({
+          eventSymbol: selectedEvent.symbol,
+          startPrice: numStart,
+          reservePrice: numReserve,
         })
         onSuccess()
         onClose()
       }
     } catch (err) {
       const msg = err?.message || err?.data?.message || 'Failed to create auction'
-      toast.error(msg)
+      notify.error('Auction Creation Failed', msg)
     } finally {
       setIsSubmitting(false)
     }
@@ -130,26 +132,29 @@ export default function CreateDutchAuctionModal({
   const durationPresets = [5, 15, 30, 60]
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-xs">
-      <div className="relative w-full max-w-lg bg-[#14100E] border border-amber-900/60 rounded-2xl p-6 shadow-2xl text-stone-200">
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-[#0F1117]/75 backdrop-blur-md transition-opacity duration-300">
+      <div className="relative w-full max-w-lg bg-[#21242E]/98 backdrop-blur-2xl border border-white/20 rounded-3xl p-6 shadow-2xl shadow-black/50 text-stone-200 animate-spatial-pop transition-all">
+        {/* Subtle Ambient Gold Flare */}
+        <div className="absolute top-0 right-0 w-48 h-48 bg-gradient-to-bl from-[#D4AF37]/15 to-transparent pointer-events-none" />
+
         {/* Close Button */}
         <button
           onClick={onClose}
-          className="absolute top-4 right-4 p-1.5 rounded-lg text-stone-400 hover:text-stone-100 hover:bg-stone-800/80 transition-colors cursor-pointer"
+          className="absolute top-5 right-5 p-1.5 rounded-xl text-white/75 hover:text-white hover:bg-white/[0.08] transition-colors cursor-pointer"
         >
           <X className="w-5 h-5" />
         </button>
 
         {/* Header */}
-        <div className="flex items-center space-x-3 mb-5 pb-4 border-b border-amber-950/60">
-          <div className="p-2 rounded-xl bg-amber-500/15 border border-amber-500/40 text-amber-400">
-            <Flame className="w-6 h-6 animate-pulse" />
+        <div className="flex items-center space-x-3 mb-5 pb-4 border-b border-white/20">
+          <div className="p-2.5 rounded-2xl bg-gradient-to-br from-[#2A2E3B] to-[#212530] border border-[#D4AF37]/60 text-[#F5D061] shadow-[0_0_18px_rgba(212,175,55,0.25),inset_0_1px_0_rgba(255,255,255,0.15)]">
+            <Flame className="w-5 h-5" />
           </div>
           <div>
-            <h2 className="text-lg font-serif font-bold text-amber-200">
+            <h2 className="text-lg font-sans font-bold text-white tracking-wide">
               Launch Dutch Auction
             </h2>
-            <p className="text-xs text-stone-400 font-mono">
+            <p className="text-xs text-white/75 font-mono">
               Market: {selectedEvent?.name} ({selectedEvent?.symbol})
             </p>
           </div>
@@ -157,18 +162,18 @@ export default function CreateDutchAuctionModal({
 
         {/* Content */}
         {isLoadingRelics ? (
-          <div className="py-12 flex flex-col items-center justify-center text-stone-500">
-            <Loader2 className="w-6 h-6 animate-spin text-amber-500 mb-2" />
-            <p className="text-xs font-mono">Checking your Vault for available relics...</p>
+          <div className="py-12 flex flex-col items-center justify-center text-white/75">
+            <Loader2 className="w-6 h-6 animate-spin text-[#F5D061] mb-2" />
+            <p className="text-xs font-mono">Checking your vault for eligible tickets...</p>
           </div>
         ) : relics.length === 0 ? (
-          <div className="py-8 text-center bg-stone-950/60 border border-stone-900 rounded-xl p-6">
-            <Ticket className="w-10 h-10 text-stone-600 mx-auto mb-3" />
-            <h3 className="text-sm font-bold text-stone-200 mb-1">No Available Tickets Found</h3>
-            <p className="text-xs text-stone-400 max-w-xs mx-auto mb-4">
+          <div className="py-8 text-center bg-white/[0.05] border border-white/20 rounded-2xl p-6 shadow-inner">
+            <Ticket className="w-10 h-10 text-white/75 mx-auto mb-3" />
+            <h3 className="text-sm font-bold text-white mb-1">No Available Tickets Found</h3>
+            <p className="text-xs text-white/75 max-w-xs mx-auto mb-4">
               You do not own any unlocked tickets for <strong>{selectedEvent?.symbol}</strong> to auction.
             </p>
-            <p className="text-[11px] text-amber-400 font-mono">
+            <p className="text-[11px] text-[#F5D061] font-mono">
               Import a pass using your barcode or purchase one on the secondary order book first.
             </p>
           </div>
@@ -176,64 +181,64 @@ export default function CreateDutchAuctionModal({
           <form onSubmit={handleSubmit} className="space-y-4">
             {/* Relic Selection */}
             <div>
-              <label className="block text-xs font-mono text-stone-300 mb-1.5">
+              <label className="block text-xs font-mono text-white/70 mb-1.5">
                 Select Ticket from Your Vault:
               </label>
-              <select
+              <ThemedDropdown
+                ariaLabel="Select Ticket from Your Vault"
                 value={selectedRelicId}
-                onChange={(e) => setSelectedRelicId(e.target.value)}
-                className="w-full px-3 py-2 bg-stone-950 border border-stone-800 rounded-lg text-xs font-mono text-amber-200 focus:outline-hidden focus:border-amber-500"
-              >
-                {relics.map((r) => (
-                  <option key={r.id} value={r.id}>
-                    Ticket ID: {r.external_ticket_id || r.id.substring(0, 8)} (Status: Available)
-                  </option>
-                ))}
-              </select>
+                onChange={setSelectedRelicId}
+                buttonClassName="rounded-xl text-[#F5D061]"
+                options={relics.map((r) => ({
+                  value: r.id,
+                  label: `Ticket ID: ${r.external_ticket_id || r.id.substring(0, 8)}`,
+                  badge: 'Available',
+                }))}
+              />
             </div>
 
             {/* Price Inputs Grid */}
             <div className="grid grid-cols-2 gap-3">
               <div>
-                <label className="block text-xs font-mono text-stone-300 mb-1.5">
+                <label className="block text-xs font-mono text-white/70 mb-1.5">
                   Start Price (₹):
                 </label>
                 <div className="relative">
-                  <span className="absolute left-3 top-2 text-stone-500 font-mono text-xs">₹</span>
+                  <span className="absolute left-3.5 top-2.5 text-[#D4AF37] font-mono text-xs">₹</span>
                   <input
                     type="number"
-                    step="0.01"
+                    step="1"
                     min="1"
                     value={startPrice}
                     onChange={(e) => setStartPrice(e.target.value)}
-                    className="w-full pl-7 pr-3 py-2 bg-stone-950 border border-stone-800 rounded-lg text-xs font-mono text-amber-200 focus:outline-hidden focus:border-amber-500"
-                    placeholder="150.00"
+                    className="w-full pl-8 pr-3 py-2.5 bg-[#181B24] border border-white/20 rounded-xl text-xs font-mono text-white focus:outline-none focus:border-[#D4AF37] focus:ring-1 focus:ring-[#D4AF37]/20 shadow-[inset_0_2px_4px_rgba(0,0,0,0.5)]"
+                    placeholder="150"
                     required
                   />
                 </div>
-                <span className="text-[10px] text-stone-500 font-mono mt-1 block">
-                  Collar Cap: ₹{maxSellPrice}
+                <span className="text-[10px] text-white/75 font-mono mt-1 block">
+                  Collar Cap: ₹{maxSellPrice.toLocaleString()}
                 </span>
               </div>
 
               <div>
-                <label className="block text-xs font-mono text-stone-300 mb-1.5">
+                <label className="block text-xs font-mono text-white/70 mb-1.5">
                   Floor Reserve Price (₹):
                 </label>
                 <div className="relative">
-                  <span className="absolute left-3 top-2 text-stone-500 font-mono text-xs">₹</span>
+                  <span className="absolute left-3.5 top-2.5 text-[#22C55E] font-mono text-xs">₹</span>
                   <input
                     type="number"
-                    step="0.01"
+                    step="1"
                     min="1"
                     value={reservePrice}
                     onChange={(e) => setReservePrice(e.target.value)}
-                    className="w-full pl-7 pr-3 py-2 bg-stone-950 border border-stone-800 rounded-lg text-xs font-mono text-emerald-300 focus:outline-hidden focus:border-emerald-500"
-                    placeholder="80.00"
+                    className="w-full pl-8 pr-3 py-2.5 bg-[#181B24] border border-white/20 rounded-xl text-xs font-mono text-[#22C55E] font-bold focus:outline-none focus:border-[#22C55E] focus:ring-1 focus:ring-[#22C55E]/20 shadow-[inset_0_2px_4px_rgba(0,0,0,0.5)]"
+                    placeholder="80"
                     required
                   />
                 </div>
-                <span className="text-[10px] text-stone-500 font-mono mt-1 block">
+                <span className="text-[10px] text-white/75 font-mono mt-1 block">
                   Minimum price you'll accept
                 </span>
               </div>
@@ -241,7 +246,7 @@ export default function CreateDutchAuctionModal({
 
             {/* Duration Selector */}
             <div>
-              <label className="block text-xs font-mono text-stone-300 mb-1.5">
+              <label className="block text-xs font-mono text-white/70 mb-1.5">
                 Auction Duration:
               </label>
               <div className="grid grid-cols-4 gap-2">
@@ -250,10 +255,10 @@ export default function CreateDutchAuctionModal({
                     key={mins}
                     type="button"
                     onClick={() => setDurationMinutes(mins)}
-                    className={`py-1.5 rounded-lg text-xs font-mono transition-colors cursor-pointer ${
+                    className={`py-1.5 rounded-xl text-xs font-mono transition-all duration-200 cursor-pointer ${
                       durationMinutes === mins
-                        ? 'bg-amber-500 text-stone-950 font-bold border border-amber-400'
-                        : 'bg-stone-900 border border-stone-800 text-stone-400 hover:text-stone-200'
+                        ? 'bg-[#D4AF37]/25 text-[#F5D061] font-bold border border-[#D4AF37] shadow-[0_0_12px_rgba(212,175,55,0.25)]'
+                        : 'bg-white/[0.06] border border-white/20 text-white/75 hover:text-white hover:border-[#D4AF37]/40'
                     }`}
                   >
                     {mins} mins
@@ -264,35 +269,35 @@ export default function CreateDutchAuctionModal({
 
             {/* Live Decay Preview Card */}
             {parseFloat(startPrice) > parseFloat(reservePrice) && (
-              <div className="bg-stone-950/80 border border-amber-950/70 rounded-xl p-3 text-xs font-mono space-y-1.5">
-                <div className="flex items-center space-x-1.5 text-amber-400 font-semibold mb-1">
+              <div className="bg-white/[0.05] border border-[#D4AF37]/25 rounded-2xl p-3.5 text-xs font-mono space-y-1.5 shadow-[inset_0_1px_0_rgba(255,255,255,0.05)]">
+                <div className="flex items-center space-x-1.5 text-[#F5D061] font-semibold mb-1">
                   <TrendingDown className="w-3.5 h-3.5" />
                   <span>Decay Rate Preview:</span>
                 </div>
-                <div className="flex justify-between text-stone-400 text-[11px]">
+                <div className="flex justify-between text-white/75 text-[11px]">
                   <span>Decay speed:</span>
-                  <span className="text-stone-200 font-bold">
+                  <span className="text-white font-bold">
                     ₹{(((parseFloat(startPrice) - parseFloat(reservePrice)) / (durationMinutes * 60))).toFixed(3)} / second
                   </span>
                 </div>
-                <div className="flex justify-between text-stone-400 text-[11px]">
+                <div className="flex justify-between text-white/75 text-[11px]">
                   <span>Midpoint price ({durationMinutes / 2}m):</span>
-                  <span className="text-amber-300">
-                    ₹{((parseFloat(startPrice) + parseFloat(reservePrice)) / 2).toFixed(2)}
+                  <span className="text-[#F5D061] font-bold">
+                    ₹{Math.round((parseFloat(startPrice) + parseFloat(reservePrice)) / 2).toLocaleString()}
                   </span>
                 </div>
               </div>
             )}
 
             {collarError && (
-              <div className="flex items-center space-x-2 text-xs text-rose-400 bg-rose-950/40 border border-rose-800/50 p-2.5 rounded-lg">
+              <div className="flex items-center space-x-2 text-xs text-[#EF4444] bg-[#EF4444]/10 border border-[#EF4444]/30 p-3 rounded-xl">
                 <AlertTriangle className="w-4 h-4 shrink-0" />
                 <span>{collarError}</span>
               </div>
             )}
 
-            <div className="flex items-start space-x-2 text-[11px] text-stone-400 bg-stone-950/40 p-2.5 rounded-lg border border-stone-900">
-              <Info className="w-4 h-4 text-amber-400 shrink-0 mt-0.5" />
+            <div className="flex items-start space-x-2 text-[11px] text-white/75 bg-white/[0.05] p-3 rounded-xl border border-white/20">
+              <Info className="w-4 h-4 text-[#D4AF37] shrink-0 mt-0.5" />
               <span>
                 Locking your ticket in Dutch Auction escrow makes it available for immediate purchase.
                 Active buyers with open orders will receive email notification alerts instantly.
@@ -302,7 +307,7 @@ export default function CreateDutchAuctionModal({
             <button
               type="submit"
               disabled={isSubmitting || !!collarError}
-              className="w-full py-2.5 rounded-xl bg-gradient-to-r from-amber-500 to-amber-600 hover:from-amber-400 hover:to-amber-500 text-stone-950 font-bold text-xs uppercase tracking-wider flex items-center justify-center space-x-2 transition-all shadow-lg active:scale-98 cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
+              className="w-full py-3.5 rounded-2xl bg-gradient-to-r from-[#D4AF37] via-[#F5D061] to-[#D4AF37] hover:shadow-[0_0_25px_rgba(212,175,55,0.45)] text-black font-sans font-bold text-xs uppercase tracking-wider flex items-center justify-center space-x-2 transition-all duration-300 shadow-xl cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
             >
               {isSubmitting ? (
                 <>
@@ -311,7 +316,7 @@ export default function CreateDutchAuctionModal({
                 </>
               ) : (
                 <>
-                  <Flame className="w-4 h-4 fill-current" />
+                  <Flame className="w-4 h-4 fill-current text-black" />
                   <span>Confirm & Launch Auction</span>
                 </>
               )}
@@ -322,4 +327,3 @@ export default function CreateDutchAuctionModal({
     </div>
   )
 }
-

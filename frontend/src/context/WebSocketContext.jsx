@@ -1,7 +1,7 @@
 import React, { createContext, useContext, useEffect, useRef, useState, useCallback } from 'react'
 import { useAuth } from './AuthContext'
 import { tokenStorage } from '../services/api'
-import toast from 'react-hot-toast'
+import { notify } from '../utils/notification'
 
 const WebSocketContext = createContext(null)
 
@@ -88,16 +88,10 @@ export function WebSocketProvider({ children }) {
             if (msg.event === 'KYC_STATUS_UPDATED') {
               const data = msg.data
               if (user && data.user_id === user.id) {
-                if (data.kyc_status === 'verified') {
-                  toast.success('🎉 Identity Verified! Full dark pool & escrow trading privileges unlocked.', {
-                    icon: '🛡️',
-                    duration: 6000,
-                  })
-                } else if (data.kyc_status === 'unverified') {
-                  toast.error(`⚠️ Verification Update: ${data.rejection_reason || 'Document could not be verified.'}`, {
-                    duration: 7000,
-                  })
-                }
+                notify.kycUpdated({
+                  status: data.kyc_status,
+                  reason: data.rejection_reason,
+                })
                 refreshUser()
               }
             }

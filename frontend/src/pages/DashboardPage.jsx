@@ -3,30 +3,18 @@ import { Link } from 'react-router-dom'
 import { useAuth } from '../context/AuthContext'
 import { useWebSocket } from '../context/WebSocketContext'
 import {
-  ShieldCheck,
-  ShieldAlert,
-  Clock,
-  Cpu,
   Coins,
   ArrowRight,
-  Activity,
-  Layers,
-  Zap,
-  Plus,
-  RefreshCw,
-  Wallet,
   Ticket,
+  Wallet,
 } from 'lucide-react'
 import { ticketsApi, walletApi, ordersApi } from '../services/api'
 import MarketHeader from '../components/trading/MarketHeader'
 import OrderEntryForm from '../components/trading/OrderEntryForm'
 import OrderBookDepth from '../components/trading/OrderBookDepth'
-import RecentTradesTape from '../components/trading/RecentTradesTape'
 import MyOrdersTable from '../components/trading/MyOrdersTable'
-import DutchAuctionFeed from '../components/trading/DutchAuctionFeed'
 import SimulatedDepositModal from '../components/SimulatedDepositModal'
 import ImportTicketModal from '../components/ImportTicketModal'
-import toast from 'react-hot-toast'
 
 export default function DashboardPage() {
   const { user } = useAuth()
@@ -41,7 +29,7 @@ export default function DashboardPage() {
   // Market & Events State
   const [events, setEvents] = useState([])
   const [selectedEvent, setSelectedEvent] = useState(null)
-  const [isFetchingEvents, setIsFetchingEvents] = useState(true)
+  const [_isFetchingEvents, setIsFetchingEvents] = useState(true)
 
   // Trading Data State
   const [l2Data, setL2Data] = useState({ bids: [], asks: [], spread: 0, best_bid: 0, best_ask: 0 })
@@ -196,7 +184,7 @@ export default function DashboardPage() {
       const incomingSymbol = (data?.event_symbol || data?.symbol || '').toUpperCase()
       const currentSymbol = (selectedEvent?.symbol || '').toUpperCase()
       if (!incomingSymbol || !currentSymbol || incomingSymbol === currentSymbol) {
-        setTrades((prev) => [data, ...prev.slice(0, 49)])
+        setTrades((prev) => [data, ...prev.slice(0, 199)])
         fetchOrderBook()
         fetchUserBalances()
         fetchUserRelics()
@@ -263,35 +251,54 @@ export default function DashboardPage() {
   }
 
   return (
-    <div className="min-h-[85vh] py-8 px-4 sm:px-6 lg:px-8 max-w-7xl mx-auto space-y-6 animate-fade-in">
-      {/* 1. Welcome Banner & Trader Status Header */}
-      <div className="relative rounded-2xl gloss-panel p-5 sm:p-6 border border-[#D4AF37]/30 overflow-hidden shadow-[0_10px_35px_rgba(0,0,0,0.7)]">
-        <div className="absolute right-0 top-0 bottom-0 w-1/3 bg-gradient-to-l from-[#D4AF37]/10 to-transparent pointer-events-none" />
+    <div className="min-h-[85vh] py-6 px-4 sm:px-6 lg:px-8 max-w-7xl mx-auto space-y-6 animate-fade-in">
+      
+      {/* 1. Spatial Command Deck: Welcome & Wallet HUD */}
+      <div className="relative rounded-3xl spatial-glass p-6 sm:p-7 overflow-hidden shadow-lg shadow-black/40 transition-all duration-300">
+        {/* Subtle Ambient Gold Flare */}
+        <div className="absolute right-0 top-0 bottom-0 w-1/3 bg-gradient-to-l from-[#D4AF37]/10 via-[#D4AF37]/5 to-transparent pointer-events-none" />
 
-        <div className="relative z-10 flex flex-wrap items-center justify-between gap-4">
-          <div>
-            <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-[#181412] border border-[#22C55E]/30 text-xs font-mono text-[#22C55E] mb-2">
-              <span className="w-2 h-2 rounded-full bg-[#22C55E] animate-pulse" />
-              <span>IN-MEMORY MATCHING TERMINAL // SUB-10MS SLA</span>
+        <div className="relative z-10 flex flex-wrap items-center justify-between gap-6">
+          <div className="space-y-2">
+            <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-[#22C55E]/10 border border-[#22C55E]/30 text-xs font-mono text-[#22C55E] shadow-[0_0_12px_rgba(34,197,94,0.15)]">
+              <span className="w-2 h-2 rounded-full bg-[#22C55E]" />
+              <span className="font-semibold tracking-wide">LIVE EXCHANGE · REAL-TIME ORDER BOOK</span>
             </div>
-            <h1 className="font-cinzel font-black text-2xl sm:text-3xl text-white">
+            
+            <h1 className="font-sans font-black text-2xl sm:text-3xl text-white tracking-wide">
               Secondary Exchange —{' '}
-              <span className="text-transparent bg-clip-text bg-gradient-to-r from-[#D4AF37] to-[#F5D061]">
+              <span className="text-transparent bg-clip-text bg-gradient-to-r from-white via-[#F5D061] to-[#D4AF37]">
                 {selectedEvent?.name || 'Festival Market'}
               </span>
             </h1>
-            <p className="text-xs font-mono text-[#9E9689] mt-1">
-              Signed in as <strong className="text-white">{user?.username}</strong> · Available Fiat:{' '}
-              <span className="text-[#22C55E] font-bold">₹{availableFiat.toLocaleString()}</span> · Vault Inventory:{' '}
-              <span className="text-[#F5D061] font-bold">{availableRelics} pass(es)</span>
-            </p>
+
+            {/* Spatial Wallet HUD Cluster */}
+            <div className="flex flex-wrap items-center gap-3 pt-1">
+              <span className="text-xs font-mono text-white/75">
+                Trader: <strong className="text-white font-mono">{user?.username}</strong>
+              </span>
+              <span className="text-white/75">|</span>
+              
+              <div className="inline-flex items-center gap-2 px-3 py-1 rounded-xl bg-white/[0.06] border border-white/20 shadow-[0_4px_16px_rgba(0,0,0,0.4),inset_0_1px_0_rgba(255,255,255,0.08)]">
+                <Wallet className="w-3.5 h-3.5 text-[#22C55E]" />
+                <span className="text-white/75 text-xs font-mono">Available Fiat:</span>
+                <span className="text-[#22C55E] font-bold font-mono text-xs">₹{(availableFiat || 0).toLocaleString()}</span>
+              </div>
+
+              <div className="inline-flex items-center gap-2 px-3 py-1 rounded-xl bg-white/[0.06] border border-white/20 shadow-[0_4px_16px_rgba(0,0,0,0.4),inset_0_1px_0_rgba(255,255,255,0.08)]">
+                <Ticket className="w-3.5 h-3.5 text-[#F5D061]" />
+                <span className="text-white/75 text-xs font-mono">My Tickets:</span>
+                <span className="text-[#F5D061] font-bold font-mono text-xs">{availableRelics || 0} pass(es)</span>
+              </div>
+            </div>
           </div>
 
-          <div className="flex items-center gap-2">
+          {/* Quick HUD Actions */}
+          <div className="flex items-center gap-2.5">
             <button
               type="button"
               onClick={() => setIsDepositModalOpen(true)}
-              className="px-3.5 py-2 rounded-xl font-mono text-xs uppercase tracking-wider font-semibold text-[#D4AF37] bg-[#14100E] border border-[#D4AF37]/40 hover:bg-[#1C1613] hover:border-[#D4AF37] transition-all flex items-center gap-1.5 cursor-pointer shadow-md"
+              className="px-4 py-2.5 rounded-2xl font-mono text-xs uppercase tracking-wider font-semibold text-[#F5D061] bg-[#D4AF37]/15 hover:bg-[#D4AF37]/25 border border-[#D4AF37]/45 hover:border-[#D4AF37] transition-all duration-300 flex items-center gap-2 cursor-pointer shadow-[0_4px_16px_rgba(212,175,55,0.2)]"
             >
               <Coins className="w-3.5 h-3.5 text-[#F5D061]" />
               <span>Deposit INR</span>
@@ -300,7 +307,7 @@ export default function DashboardPage() {
             <button
               type="button"
               onClick={() => setIsImportModalOpen(true)}
-              className="px-3.5 py-2 rounded-xl font-mono text-xs uppercase tracking-wider font-semibold text-white bg-[#14100E] border border-[#2A211B] hover:border-[#D4AF37] transition-all flex items-center gap-1.5 cursor-pointer shadow-md"
+              className="px-4 py-2.5 rounded-2xl font-mono text-xs uppercase tracking-wider font-semibold text-white bg-white/[0.07] hover:bg-white/[0.14] border border-white/20 hover:border-[#D4AF37]/50 transition-all duration-300 flex items-center gap-2 cursor-pointer shadow-[0_4px_16px_rgba(0,0,0,0.4),inset_0_1px_0_rgba(255,255,255,0.08)]"
             >
               <Ticket className="w-3.5 h-3.5 text-[#D4AF37]" />
               <span>Import Ticket</span>
@@ -308,7 +315,7 @@ export default function DashboardPage() {
 
             <Link
               to="/assets"
-              className="px-3.5 py-2 rounded-xl font-mono text-xs uppercase tracking-wider font-semibold text-[#8E867A] hover:text-white bg-[#14100E] border border-[#2A211B] hover:border-[#D4AF37]/50 transition-all flex items-center gap-1.5"
+              className="px-4 py-2.5 rounded-2xl font-mono text-xs uppercase tracking-wider font-semibold text-white/70 hover:text-white bg-white/[0.06] hover:bg-white/[0.12] border border-white/20 hover:border-white/25 transition-all duration-300 flex items-center gap-1.5 shadow-sm"
             >
               <span>Vault</span>
               <ArrowRight className="w-3.5 h-3.5" />
@@ -317,7 +324,7 @@ export default function DashboardPage() {
         </div>
       </div>
 
-      {/* 2. Market Selector & Anti-Scalp Collar Specs */}
+      {/* 2. Market Selector & Anti-Scalp Collar Telemetry (Level 1 Elevation) */}
       <MarketHeader
         events={events}
         selectedEvent={selectedEvent}
@@ -328,10 +335,10 @@ export default function DashboardPage() {
         telemetry={telemetry}
       />
 
-      {/* 3. Main Trading Terminal Grid (3 Columns) */}
-      <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
-        {/* Left Column (4 cols): Order Placement Form */}
-        <div className="lg:col-span-4">
+      {/* 3. Main Trading Terminal Bento Grid (Level 2 Elevation: 2-Column Matched-Height Layout) */}
+      <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-stretch">
+        {/* Left Box (5 cols): Buy / Sell Order Placement Form */}
+        <div className="lg:col-span-5 flex">
           <OrderEntryForm
             selectedEvent={selectedEvent}
             isKycVerified={isKycVerified}
@@ -344,34 +351,19 @@ export default function DashboardPage() {
           />
         </div>
 
-        {/* Center Column (5 cols): Level-2 Order Book Depth Ladder */}
-        <div className="lg:col-span-5">
+        {/* Right Box (7 cols): Level-2 Order Book Depth & Recent Executions Toggle Card */}
+        <div className="lg:col-span-7 flex">
           <OrderBookDepth
             l2Data={l2Data}
+            trades={trades}
+            selectedSymbol={selectedEvent?.symbol}
             isLoading={false}
             onSelectPrice={(price) => setExternalPrice(price)}
           />
         </div>
-
-        {/* Right Column (3 cols): Recent Executed Trades Tape */}
-        <div className="lg:col-span-3">
-          <RecentTradesTape
-            trades={trades}
-            isLoading={false}
-          />
-        </div>
       </div>
 
-      {/* 3b. Dutch Auction Price-Decay Liquidation Feed */}
-      <DutchAuctionFeed
-        selectedEvent={selectedEvent}
-        onBalanceRefresh={() => {
-          fetchUserBalances()
-          fetchUserRelics()
-        }}
-      />
-
-      {/* 4. Bottom Section: Trader Active Orders & Historical Escrow Positions */}
+      {/* 4. Bottom Section: Active Trader Orders & Settlement History (Level 3 Elevation) */}
       <MyOrdersTable
         orders={myOrders}
         isLoading={false}
@@ -379,7 +371,7 @@ export default function DashboardPage() {
         onRefresh={fetchMyOrders}
       />
 
-      {/* 5. Modals */}
+      {/* 6. Modals (Spatial Popovers with Z-50 Elevation & Diffuse Shadows) */}
       <SimulatedDepositModal
         isOpen={isDepositModalOpen}
         onClose={() => setIsDepositModalOpen(false)}
